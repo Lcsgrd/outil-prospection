@@ -40,6 +40,18 @@
   .bar > div { height:100%; width:0; background:var(--accent); transition:width .2s; }
   #log { font-family:Consolas, monospace; font-size:12px; color:var(--muted); white-space:pre-wrap; max-height:170px; overflow:auto; }
   .ok { color:var(--ok); font-weight:bold; } .err { color:var(--err); font-weight:bold; } .warn { color:var(--warn); }
+  .rayonBox { margin-top:12px; padding:14px 16px 10px; border:1px solid var(--line); border-radius:10px; background:var(--accent2); }
+  .rayonTete { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:14px; }
+  .rayonTete label { font-weight:bold; }
+  .rayonTete output { font-weight:bold; color:var(--accent); font-size:16px; font-variant-numeric:tabular-nums; }
+  input[type=range] { -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:6px; margin:14px 0 6px; cursor:pointer;
+    background:linear-gradient(to right, var(--accent) var(--pct, 0%), var(--line) var(--pct, 0%)); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:var(--card); border:3px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.25); }
+  input[type=range]::-moz-range-thumb { width:20px; height:20px; border-radius:50%; background:var(--card); border:3px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.25); }
+  input[type=range]:focus-visible { outline:2px solid var(--accent); outline-offset:6px; }
+  .graduations { position:relative; height:16px; font-size:11px; color:var(--muted); margin:0 12px; }
+  .graduations span { position:absolute; transform:translateX(-50%); white-space:nowrap; }
+  .rayonBox.inactif { opacity:.55; }
   details.aide { padding:0; }
   details.aide > summary { cursor:pointer; list-style:none; padding:18px 22px; font-weight:bold; font-size:16px; display:flex; justify-content:space-between; align-items:center; }
   details.aide > summary::-webkit-details-marker { display:none; }
@@ -65,7 +77,7 @@
     <div class="corps">
       <h3>1. Lancer une recherche</h3>
       <ol>
-        <li><b>Zone</b> : choisis un ou plusieurs <b>départements</b> (menu ou saisie : « 38 », « Rhône ») et/ou des <b>villes</b> (« Bourgoin », « 38300 »). Pour une ville, choisis « la ville seule » ou un rayon de 5 à 50 km autour.</li>
+        <li><b>Zone</b> : choisis un ou plusieurs <b>départements</b> (menu ou saisie : « 38 », « Rhône ») et/ou des <b>villes</b> (« Bourgoin », « 38300 »). Fais glisser le curseur <b>Rayon</b> : à gauche la ville seule, puis de 2 à 50 km autour (le rayon s'applique à toutes les villes choisies).</li>
         <li><b>Métier</b> : tape ce que tu cherches dans la barre bleue (« boulangerie », « agence immobilière », « chauffagiste », ou un code comme « 43.22B »), décoche les codes inutiles, puis Entrée. Tu peux aussi passer par les boutons rapides ou la liste complète.</li>
         <li><b>Options</b> : pour l'immobilier, coche « Exclure les entreprises individuelles » (écarte les mandataires). Pour les artisans et commerçants, laisse-la décochée : beaucoup sont en entreprise individuelle.</li>
         <li>Clique sur <b>Lancer la recherche</b> et garde l'onglet ouvert. Compte environ 1 minute pour 300 entreprises, plus 1 à 5 minutes pour le complément OpenStreetMap.</li>
@@ -131,14 +143,13 @@
     <div class="chips" id="depChips"></div>
 
     <label class="t" for="villeIn">Villes <span class="muted" style="font-weight:normal">(en plus ou à la place des départements)</span></label>
-    <div class="duo">
-      <div><input type="text" id="villeIn" placeholder="Tape une ville ou un code postal : Vienne, Bourgoin, 38300…" autocomplete="off"><div class="sugg" id="villeSugg"></div></div>
-      <select id="rayon" aria-label="Rayon autour des villes" style="flex:0 1 230px">
-        <option value="0">La ville seule</option><option value="5">Ville + 5 km autour</option><option value="10">Ville + 10 km autour</option>
-        <option value="20">Ville + 20 km autour</option><option value="30">Ville + 30 km autour</option><option value="50">Ville + 50 km autour</option>
-      </select>
-    </div>
+    <div><input type="text" id="villeIn" placeholder="Tape une ville ou un code postal : Vienne, Bourgoin, 38300…" autocomplete="off"><div class="sugg" id="villeSugg"></div></div>
     <div class="chips" id="villeChips"></div>
+    <div class="rayonBox" id="rayonBox">
+      <div class="rayonTete"><label for="rayon">Rayon autour des villes</label><output id="rayonVal" for="rayon">Ville seule</output></div>
+      <input type="range" id="rayon" min="0" max="10" step="1" value="0" aria-describedby="rayonVal">
+      <div class="graduations" aria-hidden="true"><span style="left:0;transform:none">Ville</span><span style="left:30%">10 km</span><span style="left:50%">20 km</span><span style="left:70%">30 km</span><span style="left:100%;transform:translateX(-100%)">50 km</span></div>
+    </div>
 
     <label class="t" for="nafSel">Métiers / codes APE</label>
     <input type="text" id="smartIn" class="smart" placeholder="🔎 Recherche : agence immobilière, boulangerie, chauffagiste, garage, 43.22B…" autocomplete="off">
@@ -345,7 +356,10 @@ const METIERS_RAPIDES = ["Chauffagiste", "Plombier", "Électricien", "Boucher", 
 
 let deps = [];
 let nafs = [];
-let villes = [];   // { code (INSEE), nom, cp, dep, lat, lon, rayon }
+let villes = [];   // { code (INSEE), nom, cp, dep, lat, lon }
+// Curseur de rayon (comme Leboncoin) : crans 0 (ville seule), 5, 10, 15, 20, 25, 30, 35, 40, 45, 50 km — plus fins au début
+const RAYONS = [0, 2, 5, 10, 15, 20, 25, 30, 35, 40, 50];
+const rayonKm = () => RAYONS[+$('rayon').value] || 0;
 
 function chips(el, list, label, remove) {
   el.innerHTML = '';
@@ -359,7 +373,11 @@ function chips(el, list, label, remove) {
 }
 function render() {
   chips($('depChips'), deps, d => `${d} – ${DEPS[d]}`, d => deps = deps.filter(x => x !== d));
-  chips($('villeChips'), villes, v => `${v.nom} (${v.cp}) – ${v.dep}${+v.rayon ? ' + ' + v.rayon + ' km' : ''}`, v => villes = villes.filter(x => x !== v));
+  chips($('villeChips'), villes, v => `${v.nom} (${v.cp}) – ${v.dep}${rayonKm() ? ' + ' + rayonKm() + ' km' : ''}`, v => villes = villes.filter(x => x !== v));
+  const r = $('rayon'), km = rayonKm();
+  r.style.setProperty('--pct', (100 * r.value / r.max) + '%');
+  $('rayonVal').textContent = km ? `+ ${km} km` : 'Ville seule';
+  $('rayonBox').classList.toggle('inactif', !villes.length);
   chips($('nafChips'), nafs, n => `${n}${NAFS[n] ? ' – ' + NAFS[n] : ''}`, n => nafs = nafs.filter(x => x !== n));
   const zones = [deps.length && `${deps.length} département(s)`, villes.length && `${villes.length} ville(s)`].filter(Boolean).join(' + ');
   $('estim').textContent = zones && nafs.length ? `${zones} × ${nafs.length} code(s)` : '';
@@ -491,8 +509,8 @@ $('smartClose').onclick = () => { $('smartIn').value = ''; $('smartRes').hidden 
   let items = [], idx = -1, timer = null, seq = 0;
   const choisir = c => {
     const v = { code: c.code, nom: c.nom, cp: (c.codesPostaux || [])[0] || '', dep: c.codeDepartement,
-      lat: c.centre && c.centre.coordinates[1], lon: c.centre && c.centre.coordinates[0], rayon: $('rayon').value };
-    if (!villes.some(x => x.code === v.code && x.rayon === v.rayon)) villes.push(v);
+      lat: c.centre && c.centre.coordinates[1], lon: c.centre && c.centre.coordinates[0] };
+    if (!villes.some(x => x.code === v.code)) villes.push(v);
     input.value = ''; box.style.display = 'none'; render();
   };
   const chercher = async () => {
@@ -519,6 +537,8 @@ $('smartClose').onclick = () => { $('smartIn').value = ''; $('smartRes').hidden 
     } else if (e.key === 'Enter') { e.preventDefault(); if (idx >= 0 && items[idx]) choisir(items[idx]); }
   });
 })();
+
+$('rayon').addEventListener('input', render);
 
 // Menus déroulants
 (function remplirMenus() {
@@ -584,9 +604,9 @@ $('go').onclick = async () => {
   try {
     // Zones : départements entiers, villes seules (code commune) ou villes + rayon (recherche géographique)
     const zones = deps.map(d => ({ nom: d, filtre: `departement=${d}`, base: API, garde: e => dansDep(e, d) }))
-      .concat(villes.map(v => +v.rayon && v.lat
-        ? { nom: `${v.nom} + ${v.rayon} km`, filtre: `lat=${v.lat}&long=${v.lon}&radius=${v.rayon}`, base: API.replace('/search', '/near_point'),
-            garde: e => !e.latitude || distanceKm(v.lat, v.lon, +e.latitude, +e.longitude) <= +v.rayon + 0.5 }
+      .concat(villes.map(v => rayonKm() && v.lat
+        ? { nom: `${v.nom} + ${rayonKm()} km`, filtre: `lat=${v.lat}&long=${v.lon}&radius=${rayonKm()}`, base: API.replace('/search', '/near_point'),
+            garde: e => !e.latitude || distanceKm(v.lat, v.lon, +e.latitude, +e.longitude) <= rayonKm() + 0.5 }
         : { nom: v.nom, filtre: `code_commune=${v.code}`, base: API, garde: e => !e.commune || String(e.commune) === v.code }));
     const plan = [];
     for (const z of zones) for (const naf of nafs) {
