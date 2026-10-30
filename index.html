@@ -52,6 +52,8 @@
   .graduations { position:relative; height:16px; font-size:11px; color:var(--muted); margin:0 12px; }
   .graduations span { position:absolute; transform:translateX(-50%); white-space:nowrap; }
   .rayonBox.inactif { opacity:.55; }
+  .signature { text-align:center; font-size:13px; color:var(--muted); padding:8px 0 24px; letter-spacing:.3px; }
+  .signature b { color:var(--accent); }
   details.aide { padding:0; }
   details.aide > summary { cursor:pointer; list-style:none; padding:18px 22px; font-weight:bold; font-size:16px; display:flex; justify-content:space-between; align-items:center; }
   details.aide > summary::-webkit-details-marker { display:none; }
@@ -185,6 +187,7 @@
     <table class="apercu" id="apercu"></table>
     <textarea id="out" readonly></textarea>
   </div>
+  <footer class="signature">By <b>LcsGrd</b></footer>
 </main>
 <script type="text/plain" id="scriptGs">/**
  * ENRICHISSEMENT GRATUIT DES EMAILS — fonctionne dans N'IMPORTE QUEL Google Sheet
