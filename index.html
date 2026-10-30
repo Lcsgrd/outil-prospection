@@ -86,24 +86,28 @@
         <li>Clique sur <b>Télécharger en CSV</b> (ou <b>Copier le tableau</b>).</li>
       </ol>
 
-      <h3>2. Compléter les emails gratuitement (Google Sheets)</h3>
-      <p>L'outil remplit déjà téléphone, site web et parfois email grâce à OpenStreetMap. Pour aller chercher l'email sur le site web des entreprises, dans <b>le Google Sheet de ton choix</b> (artisans, commerçants, autres listes) :</p>
+      <h3>2. Trouver les emails manquants (gratuit, dans Google Sheets)</h3>
+      <p>L'outil trouve déjà une partie des téléphones, sites et emails. Pour les entreprises qui ont un site web mais pas d'email, un petit programme peut aller lire leur site et récupérer l'adresse affichée.</p>
+
+      <p style="margin-top:10px"><b>À faire une seule fois (5 minutes)</b></p>
       <ol>
-        <li>Ouvre ou crée un Google Sheet, puis Fichier &gt; Importer &gt; ton CSV (dans un nouvel onglet ou un onglet existant).</li>
-        <li><b>Une seule fois par fichier</b> : clique sur <b>Copier le script</b> ci-dessous, puis dans ton Google Sheet : Extensions &gt; Apps Script, efface le contenu, colle (Ctrl + V), Ctrl + S, et recharge le Google Sheet. Un menu <b>Prospection</b> apparaît en haut.
-          <div class="row" style="margin-top:8px"><button id="copyGs">Copier le script</button><button class="sec" id="dlGs">Télécharger enrichissement_emails.gs</button></div></li>
-        <li>Affiche l'onglet qui contient tes entreprises, puis <b>Prospection &gt; Chercher les emails sur les sites</b>. Le script travaille sur l'onglet affiché, quel que soit son nom.</li>
-        <li>Chaque passage traite 80 à 150 sites (limite de 6 minutes de Google). <b>Relance jusqu'au message « plus rien à analyser »</b>. La colonne « Site analysé le » évite d'analyser deux fois le même site.</li>
-        <li>La première fois, Google demande une autorisation : Paramètres avancés &gt; Accéder au projet &gt; Autoriser.</li>
+        <li>Crée un Google Sheet vide (tape <code>sheets.new</code> dans la barre d'adresse).</li>
+        <li>En haut du Google Sheet, clique sur <b>Extensions</b>, puis <b>Apps Script</b>. Une nouvelle page s'ouvre avec un peu de texte.</li>
+        <li>Clique sur le bouton <b>Copier le programme</b> ci-dessous.
+          <div class="row" style="margin-top:8px"><button id="copyGs">Copier le programme</button><button class="sec" id="dlGs">Télécharger le fichier</button></div></li>
+        <li>Sur la page Apps Script : efface tout le texte (Ctrl + A puis Suppr), colle (Ctrl + V), puis clique sur l'icône <b>disquette</b> pour enregistrer. Tu peux fermer cette page.</li>
+        <li>Reviens sur ton Google Sheet et <b>recharge la page</b> (touche F5). Un nouveau menu <b>Prospection</b> apparaît en haut, à côté de « Aide ».</li>
       </ol>
-      <div class="alerte" style="border-left-color:var(--accent)"><b>Tu utilises l'agent de prospection immobilière ?</b> Rien à installer, tout est déjà dans ton fichier « Prospection agences 38 » :
-        <ol>
-          <li>Ici, clique sur <b>Copier le tableau</b>.</li>
-          <li>Ouvre ton fichier « Prospection agences 38 », va dans l'onglet <b>Import</b>, clique sur la case <b>A1</b> et colle (Ctrl + V).</li>
-          <li>En haut du Google Sheet : menu <b>Prospection &gt; 1. Importer les agences</b>.</li>
-          <li>Puis : menu <b>Prospection &gt; 2. Chercher les emails sur les sites</b>. Relance-le jusqu'au message « plus rien à analyser ».</li>
-        </ol>
-        C'est tout. Le lendemain à 8h, l'agent prépare les mails des agences pour lesquelles il a trouvé un email.</div>
+      <p style="margin-top:6px">Astuce : garde ce Google Sheet comme modèle. Pour chaque nouvelle liste, fais <b>Fichier &gt; Créer une copie</b> : le menu Prospection y sera déjà.</p>
+
+      <p style="margin-top:12px"><b>À chaque nouvelle liste</b></p>
+      <ol>
+        <li>Dans ton Google Sheet : <b>Fichier &gt; Importer &gt; Importer</b>, choisis le fichier CSV téléchargé ici, sélectionne « <b>Insérer de nouvelles feuilles</b> », puis <b>Importer les données</b>.</li>
+        <li>Reste sur ce nouvel onglet, puis clique sur <b>Prospection &gt; Chercher les emails sur les sites</b>.</li>
+        <li>La première fois seulement, Google demande ton autorisation : <b>Continuer</b>, choisis ton compte, puis <b>Paramètres avancés &gt; Accéder au projet &gt; Autoriser</b>. C'est normal : c'est ton propre programme, il ne fait que lire les sites web.</li>
+        <li>Patiente : un message s'affiche en bas à droite à la fin (jusqu'à 6 minutes). S'il dit qu'il reste des sites, relance la même commande, jusqu'au message « <b>Plus rien à analyser</b> ».</li>
+      </ol>
+      <p style="margin-top:6px">Les emails trouvés apparaissent dans la colonne <b>email</b>. Une colonne « Site analysé le » est ajoutée pour ne jamais vérifier deux fois le même site.</p>
 
       <h3>3. Ce que contient le fichier</h3>
       <table>
@@ -190,7 +194,7 @@
     <h1>Résultat</h1>
     <p id="resume"></p>
     <div class="row"><button id="copy">Copier le tableau</button><button class="sec" id="dl">Télécharger en CSV</button></div>
-    <p style="margin-top:12px">Pour l'agent de prospection : colle le tableau en A1 d'un onglet nommé <b>Import</b>, puis lance <b>importerBase</b>.</p>
+    <p style="margin-top:12px">Pour trouver les emails manquants, suis l'étape 2 du <a href="#aide" onclick="document.getElementById('aide').open=true">mode d'emploi</a>.</p>
     <table class="apercu" id="apercu"></table>
     <textarea id="out" readonly></textarea>
   </div>
@@ -758,7 +762,7 @@ $('copyGs').onclick = async () => {
   const code = $('scriptGs').textContent.replace(/^\n/, '');
   try { await navigator.clipboard.writeText(code); }
   catch (e) { const t = document.createElement('textarea'); t.value = code; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
-  $('copyGs').textContent = 'Script copié ✓'; setTimeout(() => $('copyGs').textContent = 'Copier le script', 2500);
+  $('copyGs').textContent = 'Programme copié ✓'; setTimeout(() => $('copyGs').textContent = 'Copier le programme', 2500);
 };
 $('dlGs').onclick = () => {
   const a = document.createElement('a');
