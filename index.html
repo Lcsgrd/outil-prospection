@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recherche entreprises France</title>
+<style>
+  :root { --bg:#f3f4f6; --card:#fff; --txt:#111827; --muted:#6b7280; --accent:#1b5ea6; --accent2:#e8f0fa; --ok:#15803d; --err:#b91c1c; --warn:#b45309; --line:#e5e7eb; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f172a; --card:#111827; --txt:#f3f4f6; --muted:#9ca3af; --accent:#60a5fa; --accent2:#1e293b; --ok:#4ade80; --err:#f87171; --warn:#fbbf24; --line:#374151; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:15px/1.5 Arial, Helvetica, sans-serif; }
+  main { max-width:860px; margin:28px auto; padding:0 16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:22px; margin-bottom:16px; }
+  h1 { font-size:21px; margin:0 0 4px; } h2 { font-size:15px; margin:0 0 8px; }
+  p, .muted { margin:4px 0; color:var(--muted); }
+  label.t { display:block; font-weight:bold; font-size:13px; margin:16px 0 6px; }
+  .duo { display:flex; gap:8px; flex-wrap:wrap; }
+  input.smart { font-size:15px; padding:11px 13px; border:2px solid var(--accent); }
+  .smartRes { border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-top:6px; background:var(--card); }
+  .smartHead { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:13px; margin-bottom:6px; }
+  .smartHead b { color:var(--accent); }
+  #smartList { max-height:260px; overflow:auto; }
+  #smartList label { display:flex; gap:8px; align-items:flex-start; padding:4px 0; font-size:13px; cursor:pointer; }
+  #smartList label.deja { color:var(--muted); }
+  .duo > * { flex:1 1 260px; min-width:0; }
+  select { width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--txt); font-size:14px; }
+  input[type=text] { width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--txt); font-size:14px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; min-height:30px; }
+  .chip { background:var(--accent2); color:var(--txt); border:1px solid var(--line); border-radius:16px; padding:3px 6px 3px 11px; font-size:13px; display:flex; align-items:center; gap:4px; }
+  .chip button { background:none; border:0; color:var(--muted); font-size:15px; cursor:pointer; padding:0 4px; }
+  .sugg { border:1px solid var(--line); border-radius:6px; max-height:220px; overflow:auto; margin-top:4px; display:none; background:var(--card); }
+  .sugg div { padding:7px 11px; cursor:pointer; font-size:13px; } .sugg div:hover, .sugg div.on { background:var(--accent2); }
+  .opts { display:flex; flex-wrap:wrap; gap:8px 22px; margin-top:4px; font-size:14px; }
+  .quick { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .quick button { background:var(--card); color:var(--accent); border:1px solid var(--line); padding:4px 10px; font-size:12px; font-weight:normal; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:11px 18px; font-weight:bold; font-size:14px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  button.sec { background:var(--card); color:var(--accent); border:1px solid var(--accent); }
+  .bar { height:10px; background:var(--line); border-radius:6px; overflow:hidden; margin:14px 0 8px; }
+  .bar > div { height:100%; width:0; background:var(--accent); transition:width .2s; }
+  #log { font-family:Consolas, monospace; font-size:12px; color:var(--muted); white-space:pre-wrap; max-height:170px; overflow:auto; }
+  .ok { color:var(--ok); font-weight:bold; } .err { color:var(--err); font-weight:bold; } .warn { color:var(--warn); }
+  details.aide { padding:0; }
+  details.aide > summary { cursor:pointer; list-style:none; padding:18px 22px; font-weight:bold; font-size:16px; display:flex; justify-content:space-between; align-items:center; }
+  details.aide > summary::-webkit-details-marker { display:none; }
+  details.aide > summary::after { content:'Afficher ▾'; font-size:13px; font-weight:normal; color:var(--accent); }
+  details.aide[open] > summary::after { content:'Masquer ▴'; }
+  .aide .corps { padding:0 22px 20px; }
+  .aide h3 { font-size:14px; margin:18px 0 6px; color:var(--accent); }
+  .aide ol, .aide ul { margin:4px 0 0 20px; padding:0; } .aide li { margin:3px 0; }
+  .aide code { background:var(--accent2); padding:1px 5px; border-radius:4px; font-size:13px; }
+  .aide table { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px; }
+  .aide th, .aide td { border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
+  .aide .alerte { border-left:4px solid var(--warn); background:var(--accent2); padding:10px 12px; border-radius:4px; margin-top:8px; font-size:14px; }
+  textarea { width:100%; height:120px; margin-top:10px; font-family:Consolas, monospace; font-size:11px; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:6px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; align-items:center; }
+  table.apercu { width:100%; border-collapse:collapse; font-size:12px; margin-top:12px; display:block; overflow-x:auto; }
+  table.apercu th, table.apercu td { border-bottom:1px solid var(--line); padding:5px 8px; text-align:left; white-space:nowrap; }
+</style>
+</head>
+<body>
+<main>
+  <details class="card aide" id="aide">
+    <summary>Mode d'emploi</summary>
+    <div class="corps">
+      <h3>1. Lancer une recherche</h3>
+      <ol>
+        <li><b>Zone</b> : choisis un ou plusieurs <b>départements</b> (menu ou saisie : « 38 », « Rhône ») et/ou des <b>villes</b> (« Bourgoin », « 38300 »). Pour une ville, choisis « la ville seule » ou un rayon de 5 à 50 km autour.</li>
+        <li><b>Métier</b> : tape ce que tu cherches dans la barre bleue (« boulangerie », « agence immobilière », « chauffagiste », ou un code comme « 43.22B »), décoche les codes inutiles, puis Entrée. Tu peux aussi passer par les boutons rapides ou la liste complète.</li>
+        <li><b>Options</b> : pour l'immobilier, coche « Exclure les entreprises individuelles » (écarte les mandataires). Pour les artisans et commerçants, laisse-la décochée : beaucoup sont en entreprise individuelle.</li>
+        <li>Clique sur <b>Lancer la recherche</b> et garde l'onglet ouvert. Compte environ 1 minute pour 300 entreprises, plus 1 à 5 minutes pour le complément OpenStreetMap.</li>
+        <li>Clique sur <b>Télécharger en CSV</b> (ou <b>Copier le tableau</b>).</li>
+      </ol>
+
+      <h3>2. Compléter les emails gratuitement (Google Sheets)</h3>
+      <p>L'outil remplit déjà téléphone, site web et parfois email grâce à OpenStreetMap. Pour aller chercher l'email sur le site web des entreprises, dans <b>le Google Sheet de ton choix</b> :</p>
+      <ol>
+        <li>Ouvre ou crée un Google Sheet, puis Fichier &gt; Importer &gt; ton CSV (dans un nouvel onglet ou un onglet existant).</li>
+        <li><b>Une seule fois par fichier</b> : clique sur <b>Copier le script</b> ci-dessous, puis dans ton Google Sheet : Extensions &gt; Apps Script, efface le contenu, colle (Ctrl + V), Ctrl + S, et recharge le Google Sheet. Un menu <b>Prospection</b> apparaît en haut.
+          <div class="row" style="margin-top:8px"><button id="copyGs">Copier le script</button><button class="sec" id="dlGs">Télécharger enrichissement_emails.gs</button></div></li>
+        <li>Affiche l'onglet qui contient tes entreprises, puis <b>Prospection &gt; Chercher les emails sur les sites</b>. Le script travaille sur l'onglet affiché, quel que soit son nom.</li>
+        <li>Chaque passage traite 80 à 150 sites (limite de 6 minutes de Google). <b>Relance jusqu'au message « plus rien à analyser »</b>. La colonne « Site analysé le » évite d'analyser deux fois le même site.</li>
+        <li>La première fois, Google demande une autorisation : Paramètres avancés &gt; Accéder au projet &gt; Autoriser.</li>
+      </ol>
+      <p style="margin-top:6px">Pour l'agent de prospection immobilière, c'est déjà intégré : colle le tableau dans son onglet <code>Import</code>, lance <code>importerBase</code>, puis <code>chercherEmailsSurSites</code> depuis l'onglet <code>Agences</code>.</p>
+
+      <h3>3. Ce que contient le fichier</h3>
+      <table>
+        <tr><th>Colonnes</th><th>Contenu</th></tr>
+        <tr><td>siret, nom_complet, enseignes, nom_commercial, naf</td><td>Identité de l'établissement au registre officiel</td></tr>
+        <tr><td>adresse, code_postal, ville, departement</td><td>Adresse de l'établissement (pas celle du siège)</td></tr>
+        <tr><td>gerant, qualite</td><td>Premier dirigeant déclaré (Prénom Nom) et sa fonction</td></tr>
+        <tr><td>tranche_effectif, date_creation</td><td>Taille et ancienneté de l'entreprise</td></tr>
+        <tr><td>telephone, site_web, email, source_contact</td><td>Coordonnées trouvées sur OpenStreetMap et la fiche d'origine, pour vérifier</td></tr>
+      </table>
+      <p style="margin-top:6px">Déjà écartés automatiquement : entreprises et établissements fermés, doublons, données protégées (nom et adresse masqués), sans adresse, établissements d'une autre activité, et en option les entreprises individuelles et SCI/copropriétés.</p>
+
+      <h3>4. Limites à connaître</h3>
+      <div class="alerte"><b>Petites villes et zones rurales : attends-toi à beaucoup de cases vides.</b>
+        <ul>
+          <li><b>OpenStreetMap y est moins complet</b> : les fiches sont ajoutées par des bénévoles, nombreuses en ville, rares dans les villages. Un boulanger de bourg a souvent une fiche sans téléphone, ou pas de fiche du tout.</li>
+          <li><b>Les petites entreprises ont rarement un site web</b>, ou seulement une page Facebook ou Pages Jaunes. Sans site, pas d'email à récupérer.</li>
+          <li><b>Les adresses rurales sont moins précises</b> (lieu-dit, route départementale) : la position au registre peut être éloignée de la fiche OpenStreetMap, et le rapprochement échoue.</li>
+          <li><b>Le nom officiel diffère souvent du nom d'enseigne</b> (« SARL DUPONT ET FILS » contre « Boulangerie du Centre »). Le rapprochement exige un mot en commun pour éviter les erreurs : une partie des correspondances est donc perdue.</li>
+        </ul>
+        En pratique, compte sur un taux de remplissage bien plus élevé à Grenoble, Vienne ou Bourgoin que dans les communes de moins de 2 000 habitants. Pour celles-là, prévois de compléter par téléphone (Pages Jaunes à la main) ou avec Kaspr.
+      </div>
+      <ul style="margin-top:10px">
+        <li>Le registre ne dit pas si une entreprise ouverte est vraiment active : certaines sont en sommeil. Elles se repèrent à l'usage (email qui revient, numéro non attribué).</li>
+        <li>Le registre plafonne chaque recherche à 10 000 entreprises par zone et par code : l'outil te prévient si un résultat est incomplet.</li>
+        <li>Les coordonnées OpenStreetMap peuvent dater. En cas de doute, la colonne <code>source_contact</code> indique la fiche utilisée.</li>
+        <li>Prospection B2B : chaque mail doit permettre de se désinscrire (la mention « STOP » est déjà dans les mails de l'agent).</li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="card">
+    <h1>Recherche d'entreprises par département et métier</h1>
+    <p>Interroge le registre officiel des entreprises (recherche-entreprises.api.gouv.fr) depuis ton navigateur. Établissements actifs, situés dans les départements choisis.</p>
+
+    <label class="t" for="depSel">Départements</label>
+    <div class="duo">
+      <select id="depSel" aria-label="Choisir un département"><option value="">Choisir dans la liste…</option></select>
+      <div><input type="text" id="depIn" placeholder="…ou taper : 38, Rhône, Corse-du-Sud" autocomplete="off"><div class="sugg" id="depSugg"></div></div>
+    </div>
+    <div class="quick">
+      <button data-deps="38,69,01,73,74,26,42,07">Rhône-Alpes proche (38, 69, 01, 73, 74, 26, 42, 07)</button>
+      <button data-deps="05,04">Hautes-Alpes + Alpes-de-Haute-Provence</button>
+      <button data-deps="__clear">Tout effacer</button>
+    </div>
+    <div class="chips" id="depChips"></div>
+
+    <label class="t" for="villeIn">Villes <span class="muted" style="font-weight:normal">(en plus ou à la place des départements)</span></label>
+    <div class="duo">
+      <div><input type="text" id="villeIn" placeholder="Tape une ville ou un code postal : Vienne, Bourgoin, 38300…" autocomplete="off"><div class="sugg" id="villeSugg"></div></div>
+      <select id="rayon" aria-label="Rayon autour des villes" style="flex:0 1 230px">
+        <option value="0">La ville seule</option><option value="5">Ville + 5 km autour</option><option value="10">Ville + 10 km autour</option>
+        <option value="20">Ville + 20 km autour</option><option value="30">Ville + 30 km autour</option><option value="50">Ville + 50 km autour</option>
+      </select>
+    </div>
+    <div class="chips" id="villeChips"></div>
+
+    <label class="t" for="nafSel">Métiers / codes APE</label>
+    <input type="text" id="smartIn" class="smart" placeholder="🔎 Recherche : agence immobilière, boulangerie, chauffagiste, garage, 43.22B…" autocomplete="off">
+    <div class="smartRes" id="smartRes" hidden>
+      <div class="smartHead"><span id="smartCount"></span><span class="muted">Décoche ce que tu ne veux pas, puis Entrée</span></div>
+      <div id="smartList"></div>
+      <div class="row" style="margin-top:10px"><button id="smartAdd">Ajouter</button><button class="sec" id="smartClose">Annuler</button></div>
+    </div>
+    <div class="duo" style="margin-top:8px">
+      <select id="nafSel" aria-label="Choisir un métier ou un code APE"><option value="">…ou choisir dans la liste complète</option></select>
+    </div>
+    <div class="quick" id="metiersRapides"></div>
+    <div class="chips" id="nafChips"></div>
+
+    <label class="t">Options</label>
+    <div class="opts">
+      <label><input type="checkbox" id="optEI" checked> Exclure les entreprises individuelles (utile en immobilier pour écarter les mandataires ; décoché automatiquement pour les artisans et commerçants)</label>
+      <label><input type="checkbox" id="optSCI" checked> Exclure SCI, copropriétés, syndicats de résidence</label>
+      <label><input type="checkbox" id="optOSM" checked> Compléter téléphone, site web et email avec OpenStreetMap (gratuit, +1 à 5 min)</label>
+    </div>
+
+    <div class="row"><button id="go">Lancer la recherche</button><span class="muted" id="estim"></span></div>
+    <div class="bar"><div id="prog"></div></div>
+    <div id="status"></div>
+    <div id="log"></div>
+  </div>
+
+  <div class="card" id="result" hidden>
+    <h1>Résultat</h1>
+    <p id="resume"></p>
+    <div class="row"><button id="copy">Copier le tableau</button><button class="sec" id="dl">Télécharger en CSV</button></div>
+    <p style="margin-top:12px">Pour l'agent de prospection : colle le tableau en A1 d'un onglet nommé <b>Import</b>, puis lance <b>importerBase</b>.</p>
+    <table class="apercu" id="apercu"></table>
+    <textarea id="out" readonly></textarea>
+  </div>
+</main>
+<script type="text/plain" id="scriptGs">/**
+ * ENRICHISSEMENT GRATUIT DES EMAILS — fonctionne dans N'IMPORTE QUEL Google Sheet
+ * (Extensions > Apps Script, colle ce code, Ctrl + S, puis recharge le Google Sheet).
+ *
+ * Un menu « Prospection » apparaît en haut du Google Sheet : il travaille sur l'onglet affiché,
+ * quel que soit le fichier ou le nom de l'onglet.
+ *
+ * Pour chaque ligne qui a un site web mais pas d'email, le script ouvre la page d'accueil du site
+ * + ses pages "contact" et "mentions légales", et récupère l'adresse email affichée.
+ *
+ * Colonnes reconnues automatiquement en ligne 1 (ou ligne 2) :
+ *   site web : "site_web", "Site web", "Site internet", "website"
+ *   email    : "email", "Email", "Mail", "Mail client"
+ * Le script ajoute une colonne "Site analysé le" pour ne jamais analyser deux fois le même site.
+ *
+ * Lance chercherEmailsSurSites() : environ 80 à 150 sites par passage (limite Google de 6 minutes).
+ * Relance-la jusqu'à ce que le journal indique "plus rien à analyser".
+ */
+
+const ENR = {
+  NOMS_SITE: ['site_web', 'site web', 'site internet', 'website', 'site'],
+  NOMS_EMAIL: ['email', 'e-mail', 'mail', 'mail client', 'email agence'],
+  COL_ANALYSE: 'Site analysé le',
+  DUREE_MAX_MS: 5 * 60 * 1000,
+  PAGES_MAX: 4,
+};
+
+/** Ajoute le menu « Prospection » à l'ouverture du fichier. */
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('Prospection')
+    .addItem('Chercher les emails sur les sites (onglet affiché)', 'chercherEmailsSurSites')
+    .addSeparator()
+    .addItem('Mode d\'emploi', 'aideEnrichissement')
+    .addToUi();
+}
+
+function aideEnrichissement() {
+  SpreadsheetApp.getUi().alert('Chercher les emails',
+    '1. Affiche l\'onglet qui contient tes entreprises (ex. le CSV importé depuis l\'outil de recherche).\n' +
+    '2. Il doit avoir une colonne "site_web" (ou "Site web") et une colonne "email" (ou "Email"), en ligne 1 ou 2.\n' +
+    '3. Menu Prospection > Chercher les emails sur les sites.\n' +
+    '4. Chaque passage traite 80 à 150 sites : relance jusqu\'au message "plus rien à analyser".\n\n' +
+    'Petites villes : beaucoup d\'entreprises n\'ont pas de site, donc pas d\'email récupérable.',
+    SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+function chercherEmailsSurSites() {
+  const sh = SpreadsheetApp.getActiveSheet();
+  SpreadsheetApp.getActive().toast(`Analyse des sites de l'onglet « ${sh.getName()} »…`, 'Prospection', 10);
+  const debut = Date.now();
+  const { hr, cSite, cEmail, cAnalyse } = colonnesEnrichissement_(sh);
+  const n = sh.getLastRow() - hr;
+  if (n <= 0) return Logger.log('Aucune ligne.');
+  const sites = sh.getRange(hr + 1, cSite, n, 1).getValues();
+  const emails = sh.getRange(hr + 1, cEmail, n, 1).getValues();
+  const analyses = sh.getRange(hr + 1, cAnalyse, n, 1).getValues();
+  let vus = 0, trouves = 0, restants = 0;
+
+  for (let i = 0; i < n; i++) {
+    const site = String(sites[i][0] || '').trim();
+    if (!site || String(emails[i][0] || '').trim() || analyses[i][0]) continue;
+    if (Date.now() - debut > ENR.DUREE_MAX_MS) { restants++; continue; }
+    const email = emailDepuisSite_(site);
+    vus++;
+    sh.getRange(hr + 1 + i, cAnalyse).setValue(new Date());
+    if (email) { sh.getRange(hr + 1 + i, cEmail).setValue(email); trouves++; }
+  }
+  const msg = `${vus} site(s) analysé(s), ${trouves} email(s) trouvé(s).` +
+    (restants ? ` Il en reste ${restants} : relance « Chercher les emails ».` : ' Plus rien à analyser.');
+  Logger.log(msg);
+  try { SpreadsheetApp.getActive().toast(msg, 'Prospection', 30); } catch (e) { /* lancé depuis l'éditeur */ }
+}
+
+function colonnesEnrichissement_(sh) {
+  const lignes = sh.getRange(1, 1, Math.min(2, sh.getLastRow()), sh.getLastColumn()).getValues();
+  const n = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  for (let r = 0; r < lignes.length; r++) {
+    const h = lignes[r].map(n);
+    const cSite = h.findIndex(x => ENR.NOMS_SITE.includes(x)) + 1;
+    const cEmail = h.findIndex(x => ENR.NOMS_EMAIL.includes(x)) + 1;
+    if (cSite && cEmail) {
+      let cAnalyse = h.indexOf(n(ENR.COL_ANALYSE)) + 1;
+      if (!cAnalyse) {
+        cAnalyse = sh.getLastColumn() + 1;
+        if (cAnalyse > sh.getMaxColumns()) sh.insertColumnAfter(sh.getMaxColumns());
+        sh.getRange(r + 1, cAnalyse).setValue(ENR.COL_ANALYSE).setFontWeight('bold');
+      }
+      return { hr: r + 1, cSite, cEmail, cAnalyse };
+    }
+  }
+  throw new Error('Colonnes "site web" et "email" introuvables en ligne 1 ou 2 de cet onglet.');
+}
+
+/** Ouvre le site (accueil + pages contact / mentions légales) et renvoie l'email le plus pertinent. */
+function emailDepuisSite_(site) {
+  let url = site.startsWith('http') ? site : 'https://' + site;
+  const domaine = (url.match(/^https?:\/\/(?:www\.)?([^\/:?#]+)/i) || [])[1] || '';
+  // Sites de réseaux / annuaires : l'email trouvé serait celui du siège, pas celui de l'établissement
+  if (/facebook\.|instagram\.|linkedin\.|pagesjaunes\.|google\.|leboncoin\.|seloger\./i.test(domaine)) return '';
+  const html = lirePage_(url);
+  if (!html) return '';
+  const pages = [html];
+  const liens = [...html.matchAll(/href=["']([^"'#]+)["']/gi)].map(m => m[1])
+    .filter(h => /contact|mentions|legal|nous-joindre|coordonn|a-propos|qui-sommes/i.test(h))
+    .map(h => h.startsWith("http") ? h : URL_(h, url))
+    .filter((h, i, a) => h && a.indexOf(h) === i && h.includes(domaine))
+    .slice(0, ENR.PAGES_MAX - 1);
+  liens.forEach(l => { const p = lirePage_(l); if (p) pages.push(p); });
+  const tous = pages.flatMap(extraireEmails_).filter((e, i, a) => a.indexOf(e) === i);
+  if (!tous.length) return '';
+  const memeDomaine = tous.filter(e => e.split('@')[1].replace(/^www\./, '') === domaine);
+  const prefere = l => l.find(e => /^(contact|accueil|agence|info|bonjour|hello|commercial|secretariat)@/.test(e)) || l[0];
+  return prefere(memeDomaine.length ? memeDomaine : tous);
+}
+
+function lirePage_(url) {
+  try {
+    const r = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true, validateHttpsCertificates: false,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; prospection-selectra)' } });
+    const type = String(r.getHeaders()['Content-Type'] || r.getHeaders()['content-type'] || '');
+    return r.getResponseCode() < 400 && /html|text/i.test(type || 'html') ? r.getContentText().slice(0, 600000) : '';
+  } catch (e) { return ''; }
+}
+
+function extraireEmails_(html) {
+  const res = [];
+  // Emails protégés par Cloudflare (data-cfemail)
+  [...html.matchAll(/data-cfemail=["']([0-9a-f]+)["']/gi)].forEach(m => {
+    const h = m[1], k = parseInt(h.slice(0, 2), 16);
+    let s = ''; for (let i = 2; i < h.length; i += 2) s += String.fromCharCode(parseInt(h.slice(i, i + 2), 16) ^ k);
+    res.push(s);
+  });
+  const texte = html.replace(/&#64;|&#x40;|\[at\]|\(at\)| arobase /gi, '@').replace(/&#46;|\[dot\]|\(dot\)/gi, '.');
+  (texte.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || []).forEach(e => res.push(e));
+  return res.map(e => e.toLowerCase().replace(/^mailto:/, ''))
+    .filter(e => !/\.(png|jpe?g|gif|svg|webp|css|js)$/.test(e))
+    .filter(e => !/(example|exemple|domain|sentry|wixpress|godaddy|wordpress|noreply|no-reply|ne-pas-repondre|votre|your|email@|nom@|prenom)/.test(e))
+    .filter(e => e.length < 60);
+}
+
+/** Construit une URL absolue à partir d'un lien relatif (Apps Script n'a pas l'objet URL). */
+function URL_(lien, base) {
+  if (/^mailto:|^tel:|^javascript:/i.test(lien)) return '';
+  const m = base.match(/^(https?:\/\/[^\/]+)(\/.*)?$/i);
+  if (!m) return '';
+  if (lien.startsWith('//')) return 'https:' + lien;
+  if (lien.startsWith('/')) return m[1] + lien;
+  const dossier = (m[2] || '/').replace(/[^\/]*$/, '');
+  return m[1] + dossier + lien;
+}
+</script>
+<script>
+const API = 'https://recherche-entreprises.api.gouv.fr/search';
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const log = t => { $('log').textContent += t + '\n'; $('log').scrollTop = 1e9; };
+const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+const DEPS = {"01":"Ain","02":"Aisne","03":"Allier","04":"Alpes-de-Haute-Provence","05":"Hautes-Alpes","06":"Alpes-Maritimes","07":"Ardèche","08":"Ardennes","09":"Ariège","10":"Aube","11":"Aude","12":"Aveyron","13":"Bouches-du-Rhône","14":"Calvados","15":"Cantal","16":"Charente","17":"Charente-Maritime","18":"Cher","19":"Corrèze","2A":"Corse-du-Sud","2B":"Haute-Corse","21":"Côte-d'Or","22":"Côtes-d'Armor","23":"Creuse","24":"Dordogne","25":"Doubs","26":"Drôme","27":"Eure","28":"Eure-et-Loir","29":"Finistère","30":"Gard","31":"Haute-Garonne","32":"Gers","33":"Gironde","34":"Hérault","35":"Ille-et-Vilaine","36":"Indre","37":"Indre-et-Loire","38":"Isère","39":"Jura","40":"Landes","41":"Loir-et-Cher","42":"Loire","43":"Haute-Loire","44":"Loire-Atlantique","45":"Loiret","46":"Lot","47":"Lot-et-Garonne","48":"Lozère","49":"Maine-et-Loire","50":"Manche","51":"Marne","52":"Haute-Marne","53":"Mayenne","54":"Meurthe-et-Moselle","55":"Meuse","56":"Morbihan","57":"Moselle","58":"Nièvre","59":"Nord","60":"Oise","61":"Orne","62":"Pas-de-Calais","63":"Puy-de-Dôme","64":"Pyrénées-Atlantiques","65":"Hautes-Pyrénées","66":"Pyrénées-Orientales","67":"Bas-Rhin","68":"Haut-Rhin","69":"Rhône","70":"Haute-Saône","71":"Saône-et-Loire","72":"Sarthe","73":"Savoie","74":"Haute-Savoie","75":"Paris","76":"Seine-Maritime","77":"Seine-et-Marne","78":"Yvelines","79":"Deux-Sèvres","80":"Somme","81":"Tarn","82":"Tarn-et-Garonne","83":"Var","84":"Vaucluse","85":"Vendée","86":"Vienne","87":"Haute-Vienne","88":"Vosges","89":"Yonne","90":"Territoire de Belfort","91":"Essonne","92":"Hauts-de-Seine","93":"Seine-Saint-Denis","94":"Val-de-Marne","95":"Val-d'Oise","971":"Guadeloupe","972":"Martinique","973":"Guyane","974":"La Réunion","976":"Mayotte"};
+
+// Nomenclature APE (NAF rév. 2) complète : 732 codes
+const NAFS = {"01.11Z": "Culture de céréales (à l'exception du riz), de légumineuses et de graines oléagineuses", "01.12Z": "Culture du riz", "01.13Z": "Culture de légumes, de melons, de racines et de tubercules", "01.14Z": "Culture de la canne à sucre", "01.15Z": "Culture du tabac", "01.16Z": "Culture de plantes à fibres", "01.19Z": "Autres cultures non permanentes", "01.21Z": "Culture de la vigne", "01.22Z": "Culture de fruits tropicaux et subtropicaux", "01.23Z": "Culture d'agrumes", "01.24Z": "Culture de fruits à pépins et à noyau", "01.25Z": "Culture d'autres fruits d'arbres ou d'arbustes et de fruits à coque", "01.26Z": "Culture de fruits oléagineux", "01.27Z": "Culture de plantes à boissons", "01.28Z": "Culture de plantes à épices, aromatiques, médicinales et pharmaceutiques", "01.29Z": "Autres cultures permanentes", "01.30Z": "Reproduction de plantes", "01.41Z": "Élevage de vaches laitières", "01.42Z": "Élevage d'autres bovins et de buffles", "01.43Z": "Élevage de chevaux et d'autres équidés", "01.44Z": "Élevage de chameaux et d'autres camélidés", "01.45Z": "Élevage d'ovins et de caprins", "01.46Z": "Élevage de porcins", "01.47Z": "Élevage de volailles", "01.49Z": "Élevage d'autres animaux", "01.50Z": "Culture et élevage associés", "01.61Z": "Activités de soutien aux cultures", "01.62Z": "Activités de soutien à la production animale", "01.63Z": "Traitement primaire des récoltes", "01.64Z": "Traitement des semences", "01.70Z": "Chasse, piégeage et services annexes", "02.10Z": "Sylviculture et autres activités forestières", "02.20Z": "Exploitation forestière", "02.30Z": "Récolte de produits forestiers non ligneux poussant à l'état sauvage", "02.40Z": "Services de soutien à l'exploitation forestière", "03.11Z": "Pêche en mer", "03.12Z": "Pêche en eau douce", "03.21Z": "Aquaculture en mer", "03.22Z": "Aquaculture en eau douce", "05.10Z": "Extraction de houille", "05.20Z": "Extraction de lignite", "06.10Z": "Extraction de pétrole brut", "06.20Z": "Extraction de gaz naturel", "07.10Z": "Extraction de minerais de fer", "07.21Z": "Extraction de minerais d'uranium et de thorium", "07.29Z": "Extraction d'autres minerais de métaux non ferreux", "08.11Z": "Extraction de pierres ornementales et de construction, de calcaire industriel, de gypse, de craie et d'ardoise", "08.12Z": "Exploitation de gravières et sablières, extraction d’argiles et de kaolin", "08.91Z": "Extraction des minéraux chimiques et d'engrais minéraux", "08.92Z": "Extraction de tourbe", "08.93Z": "Production de sel", "08.99Z": "Autres activités extractives n.c.a.", "09.10Z": "Activités de soutien à l'extraction d'hydrocarbures", "09.90Z": "Activités de soutien aux autres industries extractives", "10.11Z": "Transformation et conservation de la viande de boucherie", "10.12Z": "Transformation et conservation de la viande de volaille", "10.13A": "Préparation industrielle de produits à base de viande", "10.13B": "Charcuterie", "10.20Z": "Transformation et conservation de poisson, de crustacés et de mollusques", "10.31Z": "Transformation et conservation de pommes de terre", "10.32Z": "Préparation de jus de fruits et légumes", "10.39A": "Autre transformation et conservation de légumes", "10.39B": "Transformation et conservation de fruits", "10.41A": "Fabrication d'huiles et graisses brutes", "10.41B": "Fabrication d'huiles et graisses raffinées", "10.42Z": "Fabrication de margarine et graisses comestibles similaires", "10.51A": "Fabrication de lait liquide et de produits frais", "10.51B": "Fabrication de beurre", "10.51C": "Fabrication de fromage", "10.51D": "Fabrication d'autres produits laitiers", "10.52Z": "Fabrication de glaces et sorbets", "10.61A": "Meunerie", "10.61B": "Autres activités du travail des grains", "10.62Z": "Fabrication de produits amylacés", "10.71A": "Fabrication industrielle de pain et de pâtisserie fraîche", "10.71B": "Cuisson de produits de boulangerie", "10.71C": "Boulangerie et boulangerie-pâtisserie", "10.71D": "Pâtisserie", "10.72Z": "Fabrication de biscuits, biscottes et pâtisseries de conservation", "10.73Z": "Fabrication de pâtes alimentaires", "10.81Z": "Fabrication de sucre", "10.82Z": "Fabrication de cacao, chocolat et de produits de confiserie", "10.83Z": "Transformation du thé et du café", "10.84Z": "Fabrication de condiments et assaisonnements", "10.85Z": "Fabrication de plats préparés", "10.86Z": "Fabrication d'aliments homogénéisés et diététiques", "10.89Z": "Fabrication d'autres produits alimentaires n.c.a.", "10.91Z": "Fabrication d'aliments pour animaux de ferme", "10.92Z": "Fabrication d'aliments pour animaux de compagnie", "11.01Z": "Production de boissons alcooliques distillées", "11.02A": "Fabrication de vins effervescents", "11.02B": "Vinification", "11.03Z": "Fabrication de cidre et de vins de fruits", "11.04Z": "Production d'autres boissons fermentées non distillées", "11.05Z": "Fabrication de bière", "11.06Z": "Fabrication de malt", "11.07A": "Industrie des eaux de table", "11.07B": "Production de boissons rafraîchissantes", "12.00Z": "Fabrication de produits à base de tabac", "13.10Z": "Préparation de fibres textiles et filature", "13.20Z": "Tissage", "13.30Z": "Ennoblissement textile", "13.91Z": "Fabrication d'étoffes à mailles", "13.92Z": "Fabrication d'articles textiles, sauf habillement", "13.93Z": "Fabrication de tapis et moquettes", "13.94Z": "Fabrication de ficelles, cordes et filets", "13.95Z": "Fabrication de non-tissés, sauf habillement", "13.96Z": "Fabrication d'autres textiles techniques et industriels", "13.99Z": "Fabrication d'autres textiles n.c.a.", "14.11Z": "Fabrication de vêtements en cuir", "14.12Z": "Fabrication de vêtements de travail", "14.13Z": "Fabrication de vêtements de dessus", "14.14Z": "Fabrication de vêtements de dessous", "14.19Z": "Fabrication d'autres vêtements et accessoires", "14.20Z": "Fabrication d'articles en fourrure", "14.31Z": "Fabrication d'articles chaussants à mailles", "14.39Z": "Fabrication d'autres articles à mailles", "15.11Z": "Apprêt et tannage des cuirs ; préparation et teinture des fourrures", "15.12Z": "Fabrication d'articles de voyage, de maroquinerie et de sellerie", "15.20Z": "Fabrication de chaussures", "16.10A": "Sciage et rabotage du bois, hors imprégnation", "16.10B": "Imprégnation du bois", "16.21Z": "Fabrication de placage et de panneaux de bois", "16.22Z": "Fabrication de parquets assemblés", "16.23Z": "Fabrication de charpentes et d'autres menuiseries", "16.24Z": "Fabrication d'emballages en bois", "16.29Z": "Fabrication d'objets divers en bois ; fabrication d'objets en liège, vannerie et sparterie", "17.11Z": "Fabrication de pâte à papier", "17.12Z": "Fabrication de papier et de carton", "17.21A": "Fabrication de carton ondulé", "17.21B": "Fabrication de cartonnages", "17.21C": "Fabrication d'emballages en papier", "17.22Z": "Fabrication d'articles en papier à usage sanitaire ou domestique", "17.23Z": "Fabrication d'articles de papeterie", "17.24Z": "Fabrication de papiers peints", "17.29Z": "Fabrication d'autres articles en papier ou en carton", "18.11Z": "Imprimerie de journaux", "18.12Z": "Autre imprimerie (labeur)", "18.13Z": "Activités de pré-presse", "18.14Z": "Reliure et activités connexes", "18.20Z": "Reproduction d'enregistrements", "19.10Z": "Cokéfaction", "19.20Z": "Raffinage du pétrole", "20.11Z": "Fabrication de gaz industriels", "20.12Z": "Fabrication de colorants et de pigments", "20.13A": "Enrichissement et  retraitement de matières nucléaires", "20.13B": "Fabrication d'autres produits chimiques inorganiques de base n.c.a.", "20.14Z": "Fabrication d'autres produits chimiques organiques de base", "20.15Z": "Fabrication de produits azotés et d'engrais", "20.16Z": "Fabrication de matières plastiques de base", "20.17Z": "Fabrication de caoutchouc synthétique", "20.20Z": "Fabrication de pesticides et d’autres produits agrochimiques", "20.30Z": "Fabrication de peintures, vernis, encres et mastics", "20.41Z": "Fabrication de savons, détergents et produits d'entretien", "20.42Z": "Fabrication de parfums et de produits pour la toilette", "20.51Z": "Fabrication de produits explosifs", "20.52Z": "Fabrication de colles", "20.53Z": "Fabrication d'huiles essentielles", "20.59Z": "Fabrication d'autres produits chimiques n.c.a.", "20.60Z": "Fabrication de fibres artificielles ou synthétiques", "21.10Z": "Fabrication de produits pharmaceutiques de base", "21.20Z": "Fabrication de préparations pharmaceutiques", "22.11Z": "Fabrication et rechapage de pneumatiques", "22.19Z": "Fabrication d'autres articles en caoutchouc", "22.21Z": "Fabrication de plaques, feuilles, tubes et profilés en matières plastiques", "22.22Z": "Fabrication d'emballages en matières plastiques", "22.23Z": "Fabrication d'éléments en matières plastiques pour la construction", "22.29A": "Fabrication de pièces techniques à base de matières plastiques", "22.29B": "Fabrication de produits de consommation courante en matières plastiques", "23.11Z": "Fabrication de verre plat", "23.12Z": "Façonnage et transformation du verre plat", "23.13Z": "Fabrication de verre creux", "23.14Z": "Fabrication de fibres de verre", "23.19Z": "Fabrication et façonnage d'autres articles en verre, y compris verre technique", "23.20Z": "Fabrication de produits réfractaires", "23.31Z": "Fabrication de carreaux en céramique", "23.32Z": "Fabrication de briques, tuiles et produits de construction, en terre cuite", "23.41Z": "Fabrication d'articles céramiques à usage domestique ou ornemental", "23.42Z": "Fabrication d'appareils sanitaires en céramique", "23.43Z": "Fabrication d'isolateurs et pièces isolantes en céramique", "23.44Z": "Fabrication d'autres produits céramiques à usage technique", "23.49Z": "Fabrication d'autres produits céramiques", "23.51Z": "Fabrication de ciment", "23.52Z": "Fabrication de chaux et plâtre", "23.61Z": "Fabrication d'éléments en béton pour la construction", "23.62Z": "Fabrication d'éléments en plâtre pour la construction", "23.63Z": "Fabrication de béton prêt à l'emploi", "23.64Z": "Fabrication de mortiers et bétons secs", "23.65Z": "Fabrication d'ouvrages en fibre-ciment", "23.69Z": "Fabrication d'autres ouvrages en béton, en ciment ou en plâtre", "23.70Z": "Taille, façonnage et finissage de pierres", "23.91Z": "Fabrication de produits abrasifs", "23.99Z": "Fabrication d'autres produits minéraux non métalliques n.c.a.", "24.10Z": "Sidérurgie", "24.20Z": "Fabrication de tubes, tuyaux, profilés creux et accessoires correspondants en acier", "24.31Z": "Étirage à froid de barres", "24.32Z": "Laminage à froid de feuillards", "24.33Z": "Profilage à froid par formage ou pliage", "24.34Z": "Tréfilage à froid", "24.41Z": "Production de métaux précieux", "24.42Z": "Métallurgie de l'aluminium", "24.43Z": "Métallurgie du plomb, du zinc ou de l'étain", "24.44Z": "Métallurgie du cuivre", "24.45Z": "Métallurgie des autres métaux non ferreux", "24.46Z": "Élaboration et transformation de matières nucléaires", "24.51Z": "Fonderie de fonte", "24.52Z": "Fonderie d'acier", "24.53Z": "Fonderie de métaux légers", "24.54Z": "Fonderie d'autres métaux non ferreux", "25.11Z": "Fabrication de structures métalliques et de parties de structures", "25.12Z": "Fabrication de portes et fenêtres en métal", "25.21Z": "Fabrication de radiateurs et de chaudières pour le chauffage central", "25.29Z": "Fabrication d'autres réservoirs, citernes et conteneurs métalliques", "25.30Z": "Fabrication de générateurs de vapeur, à l'exception des chaudières pour le chauffage central", "25.40Z": "Fabrication d'armes et de munitions", "25.50A": "Forge, estampage, matriçage ; métallurgie des poudres", "25.50B": "Découpage, emboutissage", "25.61Z": "Traitement et revêtement des métaux", "25.62A": "Décolletage", "25.62B": "Mécanique industrielle", "25.71Z": "Fabrication de coutellerie", "25.72Z": "Fabrication de serrures et de ferrures", "25.73A": "Fabrication de moules et modèles", "25.73B": "Fabrication d'autres outillages", "25.91Z": "Fabrication de fûts et emballages métalliques similaires", "25.92Z": "Fabrication d'emballages métalliques légers", "25.93Z": "Fabrication d'articles en fils métalliques, de chaînes et de ressorts", "25.94Z": "Fabrication de vis et de boulons", "25.99A": "Fabrication d'articles métalliques ménagers", "25.99B": "Fabrication d'autres articles métalliques", "26.11Z": "Fabrication de composants électroniques", "26.12Z": "Fabrication de cartes électroniques assemblées", "26.20Z": "Fabrication d'ordinateurs et d'équipements périphériques", "26.30Z": "Fabrication d'équipements de communication", "26.40Z": "Fabrication de produits électroniques grand public", "26.51A": "Fabrication d'équipements d'aide à la navigation", "26.51B": "Fabrication d'instrumentation scientifique et technique", "26.52Z": "Horlogerie", "26.60Z": "Fabrication d'équipements d'irradiation médicale, d'équipements électromédicaux et électrothérapeutiques", "26.70Z": "Fabrication de matériels optique et photographique", "26.80Z": "Fabrication de supports magnétiques et optiques", "27.11Z": "Fabrication de moteurs, génératrices et transformateurs électriques", "27.12Z": "Fabrication de matériel de distribution et de commande électrique", "27.20Z": "Fabrication de piles et d'accumulateurs électriques", "27.31Z": "Fabrication de câbles de fibres optiques", "27.32Z": "Fabrication d'autres fils et câbles électroniques ou électriques", "27.33Z": "Fabrication de matériel d'installation électrique", "27.40Z": "Fabrication d'appareils d'éclairage électrique", "27.51Z": "Fabrication d'appareils électroménagers", "27.52Z": "Fabrication d'appareils ménagers non électriques", "27.90Z": "Fabrication d'autres matériels électriques", "28.11Z": "Fabrication de moteurs et turbines, à l'exception des moteurs d’avions et de véhicules", "28.12Z": "Fabrication d'équipements hydrauliques et pneumatiques", "28.13Z": "Fabrication d'autres pompes et compresseurs", "28.14Z": "Fabrication d'autres articles de robinetterie", "28.15Z": "Fabrication d'engrenages et d'organes mécaniques de transmission", "28.21Z": "Fabrication de fours et brûleurs", "28.22Z": "Fabrication de matériel de levage et de manutention", "28.23Z": "Fabrication de machines et d'équipements de bureau (à l'exception des ordinateurs et équipements périphériques)", "28.24Z": "Fabrication d'outillage portatif à moteur incorporé", "28.25Z": "Fabrication d'équipements aérauliques et frigorifiques industriels", "28.29A": "Fabrication d'équipements d'emballage, de conditionnement et de pesage", "28.29B": "Fabrication d'autres machines d'usage général", "28.30Z": "Fabrication de machines agricoles et forestières", "28.41Z": "Fabrication de machines-outils pour le travail des métaux", "28.49Z": "Fabrication d'autres machines-outils", "28.91Z": "Fabrication de machines pour la métallurgie", "28.92Z": "Fabrication de machines pour l'extraction ou la construction", "28.93Z": "Fabrication de machines pour l'industrie agro-alimentaire", "28.94Z": "Fabrication de machines pour les industries textiles", "28.95Z": "Fabrication de machines pour les industries du papier et du carton", "28.96Z": "Fabrication de machines pour le travail du caoutchouc ou des plastiques", "28.99A": "Fabrication de machines d'imprimerie", "28.99B": "Fabrication d'autres machines spécialisées", "29.10Z": "Construction de véhicules automobiles", "29.20Z": "Fabrication de carrosseries et remorques", "29.31Z": "Fabrication d'équipements électriques et électroniques automobiles", "29.32Z": "Fabrication d'autres équipements automobiles", "30.11Z": "Construction de navires et de structures flottantes", "30.12Z": "Construction de bateaux de plaisance", "30.20Z": "Construction de locomotives et d'autre matériel ferroviaire roulant", "30.30Z": "Construction aéronautique et spatiale", "30.40Z": "Construction de véhicules militaires de combat", "30.91Z": "Fabrication de motocycles", "30.92Z": "Fabrication de bicyclettes et de véhicules pour invalides", "30.99Z": "Fabrication d’autres équipements de transport n.c.a.", "31.01Z": "Fabrication de meubles de bureau et de magasin", "31.02Z": "Fabrication de meubles de cuisine", "31.03Z": "Fabrication de matelas", "31.09A": "Fabrication de sièges d'ameublement d'intérieur", "31.09B": "Fabrication d’autres meubles et industries connexes de l’ameublement", "32.11Z": "Frappe de monnaie", "32.12Z": "Fabrication d’articles de joaillerie et bijouterie", "32.13Z": "Fabrication d’articles de bijouterie fantaisie et articles similaires", "32.20Z": "Fabrication d'instruments de musique", "32.30Z": "Fabrication d'articles de sport", "32.40Z": "Fabrication de jeux et jouets", "32.50A": "Fabrication de matériel médico-chirurgical et dentaire", "32.50B": "Fabrication de lunettes", "32.91Z": "Fabrication d’articles de brosserie", "32.99Z": "Autres activités manufacturières n.c.a.", "33.11Z": "Réparation d'ouvrages en métaux", "33.12Z": "Réparation de machines et équipements mécaniques", "33.13Z": "Réparation de matériels électroniques et optiques", "33.14Z": "Réparation d'équipements électriques", "33.15Z": "Réparation et maintenance navale", "33.16Z": "Réparation et maintenance d'aéronefs et d'engins spatiaux", "33.17Z": "Réparation et maintenance d'autres équipements de transport", "33.19Z": "Réparation d'autres équipements", "33.20A": "Installation de structures métalliques, chaudronnées et de tuyauterie", "33.20B": "Installation de machines et équipements mécaniques", "33.20C": "Conception d'ensemble et assemblage sur site industriel d'équipements de contrôle des processus industriels", "33.20D": "Installation d'équipements électriques, de matériels électroniques et optiques ou d'autres matériels", "35.11Z": "Production d'électricité", "35.12Z": "Transport d'électricité", "35.13Z": "Distribution d'électricité", "35.14Z": "Commerce d'électricité", "35.21Z": "Production de combustibles gazeux", "35.22Z": "Distribution de combustibles gazeux par conduites", "35.23Z": "Commerce de combustibles gazeux par conduites", "35.30Z": "Production et distribution de vapeur et d'air conditionné", "36.00Z": "Captage, traitement et distribution d'eau", "37.00Z": "Collecte et traitement des eaux usées", "38.11Z": "Collecte des déchets non dangereux", "38.12Z": "Collecte des déchets dangereux", "38.21Z": "Traitement et élimination des déchets non dangereux", "38.22Z": "Traitement et élimination des déchets dangereux", "38.31Z": "Démantèlement d'épaves", "38.32Z": "Récupération de déchets triés", "39.00Z": "Dépollution et autres services de gestion des déchets", "41.10A": "Promotion immobilière de logements", "41.10B": "Promotion immobilière de bureaux", "41.10C": "Promotion immobilière d'autres bâtiments", "41.10D": "Supports juridiques de programmes", "41.20A": "Construction de maisons individuelles", "41.20B": "Construction d'autres bâtiments", "42.11Z": "Construction de routes et autoroutes", "42.12Z": "Construction de voies ferrées de surface et souterraines", "42.13A": "Construction d'ouvrages d'art", "42.13B": "Construction et entretien de tunnels", "42.21Z": "Construction de réseaux pour fluides", "42.22Z": "Construction de réseaux électriques et de télécommunications", "42.91Z": "Construction d'ouvrages maritimes et fluviaux", "42.99Z": "Construction d'autres ouvrages de génie civil n.c.a.", "43.11Z": "Travaux de démolition", "43.12A": "Travaux de terrassement courants et travaux préparatoires", "43.12B": "Travaux de terrassement spécialisés ou de grande masse", "43.13Z": "Forages et sondages", "43.21A": "Travaux d'installation électrique dans tous locaux", "43.21B": "Travaux d'installation électrique sur la voie publique", "43.22A": "Travaux d'installation d'eau et de gaz en tous locaux", "43.22B": "Travaux d'installation d'équipements thermiques et de climatisation", "43.29A": "Travaux d'isolation", "43.29B": "Autres travaux d'installation n.c.a.", "43.31Z": "Travaux de plâtrerie", "43.32A": "Travaux de menuiserie bois et PVC", "43.32B": "Travaux de menuiserie métallique et serrurerie", "43.32C": "Agencement de lieux de vente", "43.33Z": "Travaux de revêtement des sols et des murs", "43.34Z": "Travaux de peinture et vitrerie", "43.39Z": "Autres travaux de finition", "43.91A": "Travaux de charpente", "43.91B": "Travaux de couverture par éléments", "43.99A": "Travaux d'étanchéification", "43.99B": "Travaux de montage de structures métalliques", "43.99C": "Travaux de maçonnerie générale et gros œuvre de bâtiment", "43.99D": "Autres travaux spécialisés de construction", "43.99E": "Location avec opérateur de matériel de construction", "45.11Z": "Commerce de voitures et de véhicules automobiles légers", "45.19Z": "Commerce d'autres véhicules automobiles", "45.20A": "Entretien et réparation de véhicules automobiles légers", "45.20B": "Entretien et réparation d'autres véhicules automobiles", "45.31Z": "Commerce de gros d'équipements automobiles", "45.32Z": "Commerce de détail d'équipements automobiles", "45.40Z": "Commerce et réparation de motocycles", "46.11Z": "Intermédiaires du commerce en matières premières agricoles, animaux vivants, matières premières textiles et produits semi-finis", "46.12A": "Centrales d'achat de carburant", "46.12B": "Autres intermédiaires du commerce en combustibles, métaux, minéraux et produits chimiques", "46.13Z": "Intermédiaires du commerce en bois et matériaux de construction", "46.14Z": "Intermédiaires du commerce en machines, équipements industriels, navires et avions", "46.15Z": "Intermédiaires du commerce en meubles, articles de ménage et quincaillerie", "46.16Z": "Intermédiaires du commerce en textiles, habillement, fourrures, chaussures et articles en cuir", "46.17A": "Centrales d'achat alimentaires", "46.17B": "Autres intermédiaires du commerce en denrées, boissons et tabac", "46.18Z": "Intermédiaires spécialisés dans le commerce d'autres produits spécifiques", "46.19A": "Centrales d'achat non alimentaires", "46.19B": "Autres intermédiaires du commerce en produits divers", "46.21Z": "Commerce de gros (commerce interentreprises) de céréales, de tabac non manufacturé, de semences et d'aliments pour le bétail", "46.22Z": "Commerce de gros (commerce interentreprises) de fleurs et plantes", "46.23Z": "Commerce de gros (commerce interentreprises) d'animaux vivants", "46.24Z": "Commerce de gros (commerce interentreprises) de cuirs et peaux", "46.31Z": "Commerce de gros (commerce interentreprises) de fruits et légumes", "46.32A": "Commerce de gros (commerce interentreprises) de viandes de boucherie", "46.32B": "Commerce de gros (commerce interentreprises) de produits à base de viande", "46.32C": "Commerce de gros (commerce interentreprises) de volailles et gibier", "46.33Z": "Commerce de gros (commerce interentreprises) de produits laitiers, œufs, huiles et matières grasses comestibles", "46.34Z": "Commerce de gros (commerce interentreprises) de boissons", "46.35Z": "Commerce de gros (commerce interentreprises) de produits à base de tabac", "46.36Z": "Commerce de gros (commerce interentreprises) de sucre, chocolat et confiserie", "46.37Z": "Commerce de gros (commerce interentreprises) de café, thé, cacao et épices", "46.38A": "Commerce de gros (commerce interentreprises) de poissons, crustacés et mollusques", "46.38B": "Commerce de gros (commerce interentreprises) alimentaire spécialisé divers", "46.39A": "Commerce de gros (commerce interentreprises) de produits surgelés", "46.39B": "Commerce de gros (commerce interentreprises) alimentaire non spécialisé", "46.41Z": "Commerce de gros (commerce interentreprises) de textiles", "46.42Z": "Commerce de gros (commerce interentreprises) d'habillement et de chaussures", "46.43Z": "Commerce de gros (commerce interentreprises) d'appareils électroménagers", "46.44Z": "Commerce de gros (commerce interentreprises) de vaisselle, verrerie et produits d'entretien", "46.45Z": "Commerce de gros (commerce interentreprises) de parfumerie et de produits de beauté", "46.46Z": "Commerce de gros (commerce interentreprises) de produits pharmaceutiques", "46.47Z": "Commerce de gros (commerce interentreprises) de meubles, de tapis et d'appareils d'éclairage", "46.48Z": "Commerce de gros (commerce interentreprises) d'articles d'horlogerie et de bijouterie", "46.49Z": "Commerce de gros (commerce interentreprises) d'autres biens domestiques", "46.51Z": "Commerce de gros (commerce interentreprises) d'ordinateurs, d'équipements informatiques périphériques et de logiciels", "46.52Z": "Commerce de gros (commerce interentreprises) de composants et d'équipements électroniques et de télécommunication", "46.61Z": "Commerce de gros (commerce interentreprises) de matériel agricole", "46.62Z": "Commerce de gros (commerce interentreprises) de machines-outils", "46.63Z": "Commerce de gros (commerce interentreprises) de machines pour l'extraction, la construction et le génie civil", "46.64Z": "Commerce de gros (commerce interentreprises) de machines pour l'industrie textile et l'habillement", "46.65Z": "Commerce de gros (commerce interentreprises) de mobilier de bureau", "46.66Z": "Commerce de gros (commerce interentreprises) d'autres machines et équipements de bureau", "46.69A": "Commerce de gros (commerce interentreprises) de matériel électrique", "46.69B": "Commerce de gros (commerce interentreprises) de fournitures et équipements industriels divers", "46.69C": "Commerce de gros (commerce interentreprises) de fournitures et équipements divers pour le commerce et les services", "46.71Z": "Commerce de gros (commerce interentreprises) de combustibles et de produits annexes", "46.72Z": "Commerce de gros (commerce interentreprises) de minerais et métaux", "46.73A": "Commerce de gros (commerce interentreprises) de bois et de matériaux de construction", "46.73B": "Commerce de gros (commerce interentreprises) d'appareils sanitaires et de produits de décoration", "46.74A": "Commerce de gros (commerce interentreprises) de quincaillerie", "46.74B": "Commerce de gros (commerce interentreprises) de fournitures pour la plomberie et le chauffage", "46.75Z": "Commerce de gros (commerce interentreprises) de produits chimiques", "46.76Z": "Commerce de gros (commerce interentreprises) d'autres produits intermédiaires", "46.77Z": "Commerce de gros (commerce interentreprises) de déchets et débris", "46.90Z": "Commerce de gros (commerce interentreprises) non spécialisé", "47.11A": "Commerce de détail de produits surgelés", "47.11B": "Commerce d'alimentation générale", "47.11C": "Supérettes", "47.11D": "Supermarchés", "47.11E": "Magasins multi-commerces", "47.11F": "Hypermarchés", "47.19A": "Grands magasins", "47.19B": "Autres commerces de détail en magasin non spécialisé", "47.21Z": "Commerce de détail de fruits et légumes en magasin spécialisé", "47.22Z": "Commerce de détail de viandes et de produits à base de viande en magasin spécialisé", "47.23Z": "Commerce de détail de poissons, crustacés et mollusques en magasin spécialisé", "47.24Z": "Commerce de détail de pain, pâtisserie et confiserie en magasin spécialisé", "47.25Z": "Commerce de détail de boissons en magasin spécialisé", "47.26Z": "Commerce de détail de produits à base de tabac en magasin spécialisé", "47.29Z": "Autres commerces de détail alimentaires en magasin spécialisé", "47.30Z": "Commerce de détail de carburants en magasin spécialisé", "47.41Z": "Commerce de détail d'ordinateurs, d'unités périphériques et de logiciels en magasin spécialisé", "47.42Z": "Commerce de détail de matériels de télécommunication en magasin spécialisé", "47.43Z": "Commerce de détail de matériels audio et vidéo en magasin spécialisé", "47.51Z": "Commerce de détail de textiles en magasin spécialisé", "47.52A": "Commerce de détail de quincaillerie, peintures et verres en petites surfaces (moins de 400 m2)", "47.52B": "Commerce de détail de quincaillerie, peintures et verres en grandes surfaces (400 m2et plus)", "47.53Z": "Commerce de détail de tapis, moquettes et revêtements de murs et de sols en magasin spécialisé", "47.54Z": "Commerce de détail d'appareils électroménagers en magasin spécialisé", "47.59A": "Commerce de détail de meubles", "47.59B": "Commerce de détail d'autres équipements du foyer", "47.61Z": "Commerce de détail de livres en magasin spécialisé", "47.62Z": "Commerce de détail de journaux et papeterie en magasin spécialisé", "47.63Z": "Commerce de détail d'enregistrements musicaux et vidéo en magasin spécialisé", "47.64Z": "Commerce de détail d'articles de sport en magasin spécialisé", "47.65Z": "Commerce de détail de jeux et jouets en magasin spécialisé", "47.71Z": "Commerce de détail d'habillement en magasin spécialisé", "47.72A": "Commerce de détail de la chaussure", "47.72B": "Commerce de détail de maroquinerie et d'articles de voyage", "47.73Z": "Commerce de détail de produits pharmaceutiques en magasin spécialisé", "47.74Z": "Commerce de détail d'articles médicaux et orthopédiques en magasin spécialisé", "47.75Z": "Commerce de détail de parfumerie et de produits de beauté en magasin spécialisé", "47.76Z": "Commerce de détail de fleurs, plantes, graines, engrais, animaux de compagnie et aliments pour ces animaux en magasin spécialisé", "47.77Z": "Commerce de détail d'articles d'horlogerie et de bijouterie en magasin spécialisé", "47.78A": "Commerces de détail d'optique", "47.78B": "Commerces de détail de charbons et combustibles", "47.78C": "Autres commerces de détail spécialisés divers", "47.79Z": "Commerce de détail de biens d'occasion en magasin", "47.81Z": "Commerce de détail alimentaire sur éventaires et marchés", "47.82Z": "Commerce de détail de textiles, d'habillement et de chaussures sur éventaires et marchés", "47.89Z": "Autres commerces de détail sur éventaires et marchés", "47.91A": "Vente à distance sur catalogue général", "47.91B": "Vente à distance sur catalogue spécialisé", "47.99A": "Vente à domicile", "47.99B": "Vente par automates et autres commerces de détail hors magasin, éventaires ou marchés n.c.a.", "49.10Z": "Transport ferroviaire interurbain de voyageurs", "49.20Z": "Transports ferroviaires de fret", "49.31Z": "Transports urbains et suburbains de voyageurs", "49.32Z": "Transports de voyageurs par taxis", "49.39A": "Transports routiers réguliers de voyageurs", "49.39B": "Autres transports routiers de voyageurs", "49.39C": "Téléphériques et remontées mécaniques", "49.41A": "Transports routiers de fret interurbains", "49.41B": "Transports routiers de fret de proximité", "49.41C": "Location de camions avec chauffeur", "49.42Z": "Services de déménagement", "49.50Z": "Transports par conduites", "50.10Z": "Transports maritimes et côtiers de passagers", "50.20Z": "Transports maritimes et côtiers de fret", "50.30Z": "Transports fluviaux de passagers", "50.40Z": "Transports fluviaux de fret", "51.10Z": "Transports aériens de passagers", "51.21Z": "Transports aériens de fret", "51.22Z": "Transports spatiaux", "52.10A": "Entreposage et stockage frigorifique", "52.10B": "Entreposage et stockage non frigorifique", "52.21Z": "Services auxiliaires des transports terrestres", "52.22Z": "Services auxiliaires des transports par eau", "52.23Z": "Services auxiliaires des transports aériens", "52.24A": "Manutention portuaire", "52.24B": "Manutention non portuaire", "52.29A": "Messagerie, fret express", "52.29B": "Affrètement et organisation des transports", "53.10Z": "Activités de poste dans le cadre d'une obligation de service universel", "53.20Z": "Autres activités de poste et de courrier", "55.10Z": "Hôtels et hébergement similaire", "55.20Z": "Hébergement touristique et autre hébergement de courte durée", "55.30Z": "Terrains de camping et parcs pour caravanes ou véhicules de loisirs", "55.90Z": "Autres hébergements", "56.10A": "Restauration traditionnelle", "56.10B": "Cafétérias et autres libres-services", "56.10C": "Restauration de type rapide", "56.21Z": "Services des traiteurs", "56.29A": "Restauration collective sous contrat", "56.29B": "Autres services de restauration n.c.a.", "56.30Z": "Débits de boissons", "58.11Z": "Édition de livres", "58.12Z": "Édition de répertoires et de fichiers d'adresses", "58.13Z": "Édition de journaux", "58.14Z": "Édition de revues et périodiques", "58.19Z": "Autres activités d'édition", "58.21Z": "Édition de jeux électroniques", "58.29A": "Édition de logiciels système et de réseau", "58.29B": "Edition de logiciels outils de développement et de langages", "58.29C": "Edition de logiciels applicatifs", "59.11A": "Production de films et de programmes pour la télévision", "59.11B": "Production de films institutionnels et publicitaires", "59.11C": "Production de films pour le cinéma", "59.12Z": "Post-production de films cinématographiques, de vidéo et de programmes de télévision", "59.13A": "Distribution de films cinématographiques", "59.13B": "Edition et distribution vidéo", "59.14Z": "Projection de films cinématographiques", "59.20Z": "Enregistrement sonore et édition musicale", "60.10Z": "Édition et diffusion de programmes radio", "60.20A": "Edition de chaînes généralistes", "60.20B": "Edition de chaînes thématiques", "61.10Z": "Télécommunications filaires", "61.20Z": "Télécommunications sans fil", "61.30Z": "Télécommunications par satellite", "61.90Z": "Autres activités de télécommunication", "62.01Z": "Programmation informatique", "62.02A": "Conseil en systèmes et logiciels informatiques", "62.02B": "Tierce maintenance de systèmes et d’applications informatiques", "62.03Z": "Gestion d'installations informatiques", "62.09Z": "Autres activités informatiques", "63.11Z": "Traitement de données, hébergement et activités connexes", "63.12Z": "Portails Internet", "63.91Z": "Activités des agences de presse", "63.99Z": "Autres services d'information n.c.a.", "64.11Z": "Activités de banque centrale", "64.19Z": "Autres intermédiations monétaires", "64.20Z": "Activités des sociétés holding", "64.30Z": "Fonds de placement et entités financières similaires", "64.91Z": "Crédit-bail", "64.92Z": "Autre distribution de crédit", "64.99Z": "Autres activités des services financiers, hors assurance et caisses de retraite, n.c.a.", "65.11Z": "Assurance vie", "65.12Z": "Autres assurances", "65.20Z": "Réassurance", "65.30Z": "Caisses de retraite", "66.11Z": "Administration de marchés financiers", "66.12Z": "Courtage de valeurs mobilières et de marchandises", "66.19A": "Supports juridiques de gestion de patrimoine mobilier", "66.19B": "Autres activités auxiliaires de services financiers, hors assurance et caisses de retraite, n.c.a.", "66.21Z": "Évaluation des risques et dommages", "66.22Z": "Activités des agents et courtiers d'assurances", "66.29Z": "Autres activités auxiliaires d'assurance et de caisses de retraite", "66.30Z": "Gestion de fonds", "68.10Z": "Activités des marchands de biens immobiliers", "68.20A": "Location de logements", "68.20B": "Location de terrains et d'autres biens immobiliers", "68.31Z": "Agences immobilières", "68.32A": "Administration d'immeubles et autres biens immobiliers", "68.32B": "Supports juridiques de gestion de patrimoine immobilier", "69.10Z": "Activités juridiques", "69.20Z": "Activités comptables", "70.10Z": "Activités des sièges sociaux", "70.21Z": "Conseil en relations publiques et communication", "70.22Z": "Conseil pour les affaires et autres conseils de gestion", "71.11Z": "Activités d'architecture", "71.12A": "Activité des géomètres", "71.12B": "Ingénierie, études techniques", "71.20A": "Contrôle technique automobile", "71.20B": "Analyses, essais et inspections techniques", "72.11Z": "Recherche-développement en biotechnologie", "72.19Z": "Recherche-développement en autres sciences physiques et naturelles", "72.20Z": "Recherche-développement en sciences humaines et sociales", "73.11Z": "Activités des agences de publicité", "73.12Z": "Régie publicitaire de médias", "73.20Z": "Études de marché et sondages", "74.10Z": "Activités spécialisées de design", "74.20Z": "Activités photographiques", "74.30Z": "Traduction et interprétation", "74.90A": "Activité des économistes de la construction", "74.90B": "Activités spécialisées, scientifiques et techniques diverses", "75.00Z": "Activités vétérinaires", "77.11A": "Location de courte durée de voitures et de véhicules automobiles légers", "77.11B": "Location de longue durée de voitures et de véhicules automobiles légers", "77.12Z": "Location et location-bail de camions", "77.21Z": "Location et location-bail d'articles de loisirs et de sport", "77.22Z": "Location de vidéocassettes et disques vidéo", "77.29Z": "Location et location-bail d'autres biens personnels et domestiques", "77.31Z": "Location et location-bail de machines et équipements agricoles", "77.32Z": "Location et location-bail de machines et équipements pour la construction", "77.33Z": "Location et location-bail de machines de bureau et de matériel informatique", "77.34Z": "Location et location-bail de matériels de transport par eau", "77.35Z": "Location et location-bail de matériels de transport aérien", "77.39Z": "Location et location-bail d'autres machines, équipements et biens matériels n.c.a.", "77.40Z": "Location-bail de propriété intellectuelle et de produits similaires, à l'exception des œuvres soumises à copyright", "78.10Z": "Activités des agences de placement de main-d'œuvre", "78.20Z": "Activités des agences de travail temporaire", "78.30Z": "Autre mise à disposition de ressources humaines", "79.11Z": "Activités des agences de voyage", "79.12Z": "Activités des voyagistes", "79.90Z": "Autres services de réservation et activités connexes", "80.10Z": "Activités de sécurité privée", "80.20Z": "Activités liées aux systèmes de sécurité", "80.30Z": "Activités d'enquête", "81.10Z": "Activités combinées de soutien lié aux bâtiments", "81.21Z": "Nettoyage courant des bâtiments", "81.22Z": "Autres activités de nettoyage des bâtiments et nettoyage industriel", "81.29A": "Désinfection, désinsectisation, dératisation", "81.29B": "Autres activités de nettoyage n.c.a.", "81.30Z": "Services d'aménagement paysager", "82.11Z": "Services administratifs combinés de bureau", "82.19Z": "Photocopie, préparation de documents et autres activités spécialisées de soutien de bureau", "82.20Z": "Activités de centres d'appels", "82.30Z": "Organisation de foires, salons professionnels et congrès", "82.91Z": "Activités des agences de recouvrement de factures et des sociétés d'information financière sur la clientèle", "82.92Z": "Activités de conditionnement", "82.99Z": "Autres activités de soutien aux entreprises n.c.a.", "84.11Z": "Administration publique générale", "84.12Z": "Administration publique (tutelle) de la santé, de la formation, de la culture et des services sociaux, autre que sécurité sociale", "84.13Z": "Administration publique (tutelle) des activités économiques", "84.21Z": "Affaires étrangères", "84.22Z": "Défense", "84.23Z": "Justice", "84.24Z": "Activités d’ordre public et de sécurité", "84.25Z": "Services du feu et de secours", "84.30A": "Activités générales de sécurité sociale", "84.30B": "Gestion des retraites complémentaires", "84.30C": "Distribution sociale de revenus", "85.10Z": "Enseignement pré-primaire", "85.20Z": "Enseignement primaire", "85.31Z": "Enseignement secondaire général", "85.32Z": "Enseignement secondaire technique ou professionnel", "85.41Z": "Enseignement post-secondaire non supérieur", "85.42Z": "Enseignement supérieur", "85.51Z": "Enseignement de disciplines sportives et d'activités de loisirs", "85.52Z": "Enseignement culturel", "85.53Z": "Enseignement de la conduite", "85.59A": "Formation continue d'adultes", "85.59B": "Autres enseignements", "85.60Z": "Activités de soutien à l'enseignement", "86.10Z": "Activités hospitalières", "86.21Z": "Activité des médecins généralistes", "86.22A": "Activités de radiodiagnostic et de radiothérapie", "86.22B": "Activités chirurgicales", "86.22C": "Autres activités des médecins spécialistes", "86.23Z": "Pratique dentaire", "86.90A": "Ambulances", "86.90B": "Laboratoires d'analyses médicales", "86.90C": "Centres de collecte et banques d'organes", "86.90D": "Activités des infirmiers et des sages-femmes", "86.90E": "Activités des professionnels de la rééducation, de l’appareillage et des pédicures-podologues", "86.90F": "Activités de santé humaine non classées ailleurs", "87.10A": "Hébergement médicalisé pour personnes âgées", "87.10B": "Hébergement médicalisé pour enfants handicapés", "87.10C": "Hébergement médicalisé pour adultes handicapés et autre hébergement médicalisé", "87.20A": "Hébergement social pour handicapés mentaux et malades mentaux", "87.20B": "Hébergement social pour toxicomanes", "87.30A": "Hébergement social pour personnes âgées", "87.30B": "Hébergement social pour handicapés  physiques", "87.90A": "Hébergement social pour enfants en difficultés", "87.90B": "Hébergement social pour adultes et familles en difficultés et autre hébergement social", "88.10A": "Aide à domicile", "88.10B": "Accueil ou accompagnement sans hébergement d’adultes handicapés ou de  personnes âgées", "88.10C": "Aide par le travail", "88.91A": "Accueil de jeunes enfants", "88.91B": "Accueil ou accompagnement sans hébergement d’enfants handicapés", "88.99A": "Autre accueil ou accompagnement sans hébergement d’enfants et d’adolescents", "88.99B": "Action sociale sans hébergement n.c.a.", "90.01Z": "Arts du spectacle vivant", "90.02Z": "Activités de soutien au spectacle vivant", "90.03A": "Création artistique relevant des arts plastiques", "90.03B": "Autre création artistique", "90.04Z": "Gestion de salles de spectacles", "91.01Z": "Gestion des bibliothèques et des archives", "91.02Z": "Gestion des musées", "91.03Z": "Gestion des sites et monuments historiques et des attractions touristiques similaires", "91.04Z": "Gestion des jardins botaniques et zoologiques et des réserves naturelles", "92.00Z": "Organisation de jeux de hasard et d'argent", "93.11Z": "Gestion d'installations sportives", "93.12Z": "Activités de clubs de sports", "93.13Z": "Activités des centres de culture physique", "93.19Z": "Autres activités liées au sport", "93.21Z": "Activités des parcs d'attractions et parcs à thèmes", "93.29Z": "Autres activités récréatives et de loisirs", "94.11Z": "Activités des organisations patronales et consulaires", "94.12Z": "Activités des organisations professionnelles", "94.20Z": "Activités des syndicats de salariés", "94.91Z": "Activités des organisations religieuses", "94.92Z": "Activités des organisations politiques", "94.99Z": "Autres organisations fonctionnant par adhésion volontaire", "95.11Z": "Réparation d'ordinateurs et d'équipements périphériques", "95.12Z": "Réparation d'équipements de communication", "95.21Z": "Réparation de produits électroniques grand public", "95.22Z": "Réparation d'appareils électroménagers et d'équipements pour la maison et le jardin", "95.23Z": "Réparation de chaussures et d'articles en cuir", "95.24Z": "Réparation de meubles et d'équipements du foyer", "95.25Z": "Réparation d'articles d'horlogerie et de bijouterie", "95.29Z": "Réparation d'autres biens personnels et domestiques", "96.01A": "Blanchisserie-teinturerie de gros", "96.01B": "Blanchisserie-teinturerie de détail", "96.02A": "Coiffure", "96.02B": "Soins de beauté", "96.03Z": "Services funéraires", "96.04Z": "Entretien corporel", "96.09Z": "Autres services personnels n.c.a.", "97.00Z": "Activités des ménages en tant qu'employeurs de personnel domestique", "98.10Z": "Activités indifférenciées des ménages en tant que producteurs de biens pour usage propre", "98.20Z": "Activités indifférenciées des ménages en tant que producteurs de services pour usage propre", "99.00Z": "Activités des organisations et organismes extraterritoriaux"};
+
+// Métiers courants → codes APE (raccourcis et recherche par nom de métier)
+const METIERS = {"Agence immobilière": ["68.31Z"], "Gestion locative / syndic": ["68.32A"], "Promoteur immobilier": ["41.10A"], "Constructeur maisons": ["41.20A"], "Chauffagiste": ["43.22B"], "Plombier": ["43.22A"], "Électricien": ["43.21A"], "Maçon": ["43.99C"], "Menuisier": ["43.32A"], "Peintre en bâtiment": ["43.34Z"], "Couvreur": ["43.91B"], "Plaquiste / plâtrier": ["43.31Z"], "Carreleur": ["43.33Z"], "Paysagiste": ["81.30Z"], "Serrurier": ["43.32B"], "Boucher": ["47.22Z"], "Charcutier": ["10.13B"], "Boulangerie": ["10.71C", "10.71B"], "Pâtisserie": ["10.71D"], "Poissonnier": ["47.23Z"], "Primeur": ["47.21Z"], "Épicerie / supérette": ["47.11B", "47.11C"], "Caviste": ["47.25Z"], "Fromager / crèmerie": ["47.29Z"], "Tabac / presse": ["47.26Z", "47.62Z"], "Restaurant": ["56.10A"], "Restauration rapide": ["56.10C"], "Bar / café": ["56.30Z"], "Traiteur": ["56.21Z"], "Hôtel": ["55.10Z"], "Gîte / location saisonnière": ["55.20Z"], "Coiffeur": ["96.02A"], "Institut de beauté": ["96.02B"], "Pressing": ["96.01B"], "Fleuriste": ["47.76Z"], "Pharmacie": ["47.73Z"], "Opticien": ["47.78A"], "Garage auto": ["45.20A"], "Carrosserie": ["45.20B"], "Auto-école": ["85.53Z"], "Taxi / VTC": ["49.32Z"], "Déménageur": ["49.42Z"], "Médecin généraliste": ["86.21Z"], "Dentiste": ["86.23Z"], "Kiné / paramédical": ["86.90E"], "Infirmier": ["86.90D"], "Vétérinaire": ["75.00Z"], "Notaire / avocat": ["69.10Z"], "Expert-comptable": ["69.20Z"], "Architecte": ["71.11Z"], "Diagnostiqueur immobilier": ["71.20B"], "Courtier en crédit": ["66.19B"], "Agent / courtier d'assurance": ["66.22Z"], "Salle de sport": ["93.13Z"], "Crèche": ["88.91A"], "EHPAD": ["87.10A"], "Pompes funèbres": ["96.03Z"]};
+const DIVISIONS = {"01": "Culture et production animale, chasse et services annexes", "02": "Sylviculture et exploitation forestière", "03": "Pêche et aquaculture", "05": "Extraction de houille et de lignite", "06": "Extraction d'hydrocarbures", "07": "Extraction de minerais métalliques", "08": "Autres industries extractives", "09": "Services de soutien aux industries extractives", "10": "Industries alimentaires", "11": "Fabrication de boissons", "12": "Fabrication de produits à base de tabac", "13": "Fabrication de textiles", "14": "Industrie de l'habillement", "15": "Industrie du cuir et de la chaussure", "16": "Travail du bois et fabrication d'articles en bois et en liège, à l’exception des meubles ; fabrication d’articles en vannerie et sparterie", "17": "Industrie du papier et du carton", "18": "Imprimerie et reproduction d'enregistrements", "19": "Cokéfaction et raffinage", "20": "Industrie chimique", "21": "Industrie pharmaceutique", "22": "Fabrication de produits en caoutchouc et en plastique", "23": "Fabrication d'autres produits minéraux non métalliques", "24": "Métallurgie", "25": "Fabrication de produits métalliques, à l’exception des machines et des équipements", "26": "Fabrication de produits informatiques, électroniques et optiques", "27": "Fabrication d'équipements électriques", "28": "Fabrication de machines et équipements n.c.a.", "29": "Industrie automobile", "30": "Fabrication d'autres matériels de transport", "31": "Fabrication de meubles", "32": "Autres industries manufacturières", "33": "Réparation et installation de machines et d'équipements", "35": "Production et distribution d'électricité, de gaz, de vapeur et d'air conditionné", "36": "Captage, traitement et distribution d'eau", "37": "Collecte et traitement des eaux usées", "38": "Collecte, traitement et élimination des déchets ; récupération", "39": "Dépollution et autres services de gestion des déchets", "41": "Construction de bâtiments", "42": "Génie civil", "43": "Travaux de construction spécialisés", "45": "Commerce et réparation d'automobiles et de motocycles", "46": "Commerce de gros, à l’exception des automobiles et des motocycles", "47": "Commerce de détail, à l’exception des automobiles et des motocycles", "49": "Transports terrestres et transport par conduites", "50": "Transports par eau", "51": "Transports aériens", "52": "Entreposage et services auxiliaires des transports", "53": "Activités de poste et de courrier", "55": "Hébergement", "56": "Restauration", "58": "Édition", "59": "Production de films cinématographiques, de vidéo et de programmes de télévision ; enregistrement sonore et édition musicale", "60": "Programmation et diffusion", "61": "Télécommunications", "62": "Programmation, conseil et autres activités informatiques", "63": "Services d'information", "64": "Activités des services financiers, hors assurance et caisses de retraite", "65": "Assurance", "66": "Activités auxiliaires de services financiers et d'assurance", "68": "Activités immobilières", "69": "Activités juridiques et comptables", "70": "Activités des sièges sociaux ; conseil de gestion", "71": "Activités d'architecture et d'ingénierie ; activités de contrôle et analyses techniques", "72": "Recherche-développement scientifique", "73": "Publicité et études de marché", "74": "Autres activités spécialisées, scientifiques et techniques", "75": "Activités vétérinaires", "77": "Activités de location et location-bail", "78": "Activités liées à l'emploi", "79": "Activités des agences de voyage, voyagistes, services de réservation et activités connexes", "80": "Enquêtes et sécurité", "81": "Services relatifs aux bâtiments et aménagement paysager", "82": "Activités administratives et autres activités de soutien aux entreprises", "84": "Administration publique et défense ; sécurité sociale obligatoire", "85": "Enseignement", "86": "Activités pour la santé humaine", "87": "Hébergement médico-social et social", "88": "Action sociale sans hébergement", "90": "Activités créatives, artistiques et de spectacle", "91": "Bibliothèques, archives, musées et autres activités culturelles", "92": "Organisation de jeux de hasard et d'argent", "93": "Activités sportives, récréatives et de loisirs", "94": "Activités des organisations associatives", "95": "Réparation d'ordinateurs et de biens personnels et domestiques", "96": "Autres services personnels", "97": "Activités des ménages en tant qu'employeurs de personnel domestique", "98": "Activités indifférenciées des ménages en tant que producteurs de biens et services pour usage propre", "99": "Activités des organisations et organismes extraterritoriaux"};
+const METIERS_RAPIDES = ["Chauffagiste", "Plombier", "Électricien", "Boucher", "Boulangerie", "Restaurant", "Coiffeur", "Garage auto", "Bar / café", "Pharmacie", "Agence immobilière", "Gestion locative / syndic"];
+
+let deps = [];
+let nafs = [];
+let villes = [];   // { code (INSEE), nom, cp, dep, lat, lon, rayon }
+
+function chips(el, list, label, remove) {
+  el.innerHTML = '';
+  list.forEach(v => {
+    const c = document.createElement('span'); c.className = 'chip';
+    c.textContent = label(v);
+    const b = document.createElement('button'); b.textContent = '×'; b.title = 'Retirer';
+    b.onclick = () => { remove(v); render(); };
+    c.appendChild(b); el.appendChild(c);
+  });
+}
+function render() {
+  chips($('depChips'), deps, d => `${d} – ${DEPS[d]}`, d => deps = deps.filter(x => x !== d));
+  chips($('villeChips'), villes, v => `${v.nom} (${v.cp}) – ${v.dep}${+v.rayon ? ' + ' + v.rayon + ' km' : ''}`, v => villes = villes.filter(x => x !== v));
+  chips($('nafChips'), nafs, n => `${n}${NAFS[n] ? ' – ' + NAFS[n] : ''}`, n => nafs = nafs.filter(x => x !== n));
+  const zones = [deps.length && `${deps.length} département(s)`, villes.length && `${villes.length} ville(s)`].filter(Boolean).join(' + ');
+  $('estim').textContent = zones && nafs.length ? `${zones} × ${nafs.length} code(s)` : '';
+}
+
+function autocomplete(input, box, source, onPick, freeValue) {
+  let items = [], idx = -1;
+  const show = () => {
+    const q = norm(input.value.trim());
+    if (!q) { box.style.display = 'none'; return; }
+    const score = ([k, v]) => (k.startsWith('m:') && norm(k.slice(2)).startsWith(q) ? -1 : 0) +
+      (norm(k) === q || norm(v) === q ? 0 : norm(k).startsWith(q) ? 1 : norm(v).startsWith(q) ? 2 : 3);
+    items = Object.entries(source).filter(([k, v]) => norm(k).startsWith(q) || norm(k).startsWith('m:' + q) || norm(v).includes(q))
+      .sort((a, b) => score(a) - score(b)).slice(0, 30);
+    idx = items.length ? 0 : -1;
+    box.innerHTML = items.map(([k, v], i) => `<div data-k="${k}" class="${i === 0 ? 'on' : ''}">${k.startsWith('m:') ? `<b>${k.slice(2)}</b> <span class="muted">(métier)</span> – ${v}` : `<b>${k}</b> – ${v}`}</div>`).join('');
+    box.style.display = items.length ? 'block' : 'none';
+    [...box.children].forEach(d => d.onmousedown = e => { e.preventDefault(); pick(d.dataset.k); });
+  };
+  const pick = k => { onPick(k); input.value = ''; box.style.display = 'none'; render(); };
+  input.addEventListener('input', show);
+  input.addEventListener('blur', () => setTimeout(() => box.style.display = 'none', 150));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); if (!items.length) return;
+      idx = (idx + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      [...box.children].forEach((d, i) => d.classList.toggle('on', i === idx));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const libre = freeValue && freeValue(input.value.trim());
+      if (libre) pick(libre); else if (idx >= 0) pick(items[idx][0]);
+    }
+  });
+}
+autocomplete($('depIn'), $('depSugg'), DEPS, d => { if (!deps.includes(d)) deps.push(d); },
+  v => { const k = v.toUpperCase().padStart(v.length === 1 ? 2 : v.length, '0'); return DEPS[k] ? k : null; });
+const NAF_SRC = Object.assign({}, ...Object.entries(METIERS).map(([m, cs]) => ({ ['m:' + m]: cs.map(c => `${c} ${NAFS[c]}`).join(' + ') })), NAFS);
+function ajouterCodes(codes) {
+  codes.forEach(c => { if (!nafs.includes(c)) nafs.push(c); });
+  if (codes.some(c => !c.startsWith('68.'))) $('optEI').checked = false;   // artisans/commerçants : souvent en entreprise individuelle
+}
+function ajouterNaf(k) { ajouterCodes(k.startsWith('m:') ? METIERS[k.slice(2)] : [k]); }
+$('metiersRapides').innerHTML = METIERS_RAPIDES.map(m => `<button data-m="${m}">${m}</button>`).join('') + '<button data-m="__clear">Effacer les codes</button>';
+$('metiersRapides').querySelectorAll('button').forEach(b => b.onclick = () => {
+  if (b.dataset.m === '__clear') { nafs = []; } else ajouterCodes(METIERS[b.dataset.m]);
+  render();
+});
+document.querySelectorAll('.quick button[data-deps]').forEach(b => b.onclick = () => {
+  if (b.dataset.deps === '__clear') deps = [];
+  else b.dataset.deps.split(',').forEach(d => { if (!deps.includes(d)) deps.push(d); });
+  render();
+});
+// ===== Recherche intelligente : une phrase → tous les codes APE correspondants =====
+const MOTS_VIDES = ['de', 'des', 'du', 'la', 'le', 'les', 'et', 'en', 'd', 'l', 'a', 'au', 'aux', 'pour', 'sur', 'un', 'une'];
+// Mots du quotidien → codes APE (le vocabulaire officiel est parfois différent : "chauffagiste" n'y figure pas)
+const SYNONYMES = {
+  'agence immobiliere': ['68.31Z', '68.32A'], 'agence immo': ['68.31Z', '68.32A'], 'immobilier': ['68.10Z', '68.20A', '68.20B', '68.31Z', '68.32A', '68.32B'],
+  'gestion locative': ['68.32A'], 'syndic': ['68.32A'], 'marchand de biens': ['68.10Z'], 'promoteur': ['41.10A', '41.10B', '41.10C', '41.10D'],
+  'chauffagiste': ['43.22B'], 'chauffage': ['43.22B'], 'climatisation': ['43.22B'], 'pompe a chaleur': ['43.22B'],
+  'plombier': ['43.22A'], 'plomberie': ['43.22A'], 'electricien': ['43.21A'], 'macon': ['43.99C'], 'maconnerie': ['43.99C'],
+  'menuisier': ['43.32A', '16.23Z'], 'charpentier': ['43.91A'], 'couvreur': ['43.91B'], 'peintre': ['43.34Z'], 'carreleur': ['43.33Z'],
+  'plaquiste': ['43.31Z'], 'serrurier': ['43.32B'], 'paysagiste': ['81.30Z'], 'btp': ['41.20A', '41.20B', '43.21A', '43.22A', '43.22B', '43.31Z', '43.32A', '43.33Z', '43.34Z', '43.91A', '43.91B', '43.99C'],
+  'artisan batiment': ['41.20A', '43.21A', '43.22A', '43.22B', '43.31Z', '43.32A', '43.33Z', '43.34Z', '43.91A', '43.91B', '43.99C'],
+  'boucher': ['47.22Z', '10.11Z'], 'boucherie': ['47.22Z', '10.11Z'], 'charcuterie': ['10.13B', '47.22Z'], 'charcutier': ['10.13B'],
+  'boulanger': ['10.71C', '10.71B', '47.24Z'], 'boulangerie': ['10.71C', '10.71B', '47.24Z'], 'patissier': ['10.71D', '47.24Z'], 'patisserie': ['10.71D', '47.24Z'],
+  'poissonnier': ['47.23Z'], 'primeur': ['47.21Z'], 'fromager': ['47.29Z'], 'epicerie': ['47.11B', '47.11C', '47.29Z'], 'superette': ['47.11C'],
+  'supermarche': ['47.11D', '47.11F'], 'caviste': ['47.25Z'], 'tabac': ['47.26Z'], 'restaurant': ['56.10A', '56.10C'], 'restauration': ['56.10A', '56.10B', '56.10C', '56.21Z', '56.29A', '56.29B'],
+  'bar': ['56.30Z'], 'cafe': ['56.30Z'], 'traiteur': ['56.21Z'], 'hotel': ['55.10Z'], 'camping': ['55.30Z'], 'gite': ['55.20Z'],
+  'coiffeur': ['96.02A'], 'esthetique': ['96.02B'], 'estheticienne': ['96.02B'], 'pressing': ['96.01B'], 'fleuriste': ['47.76Z'],
+  'garage': ['45.20A', '45.20B'], 'garagiste': ['45.20A'], 'mecanicien': ['45.20A'], 'carrossier': ['45.20B'], 'concession auto': ['45.11Z'],
+  'taxi': ['49.32Z'], 'vtc': ['49.32Z'], 'demenageur': ['49.42Z'], 'demenagement': ['49.42Z'], 'transporteur': ['49.41A', '49.41B'],
+  'medecin': ['86.21Z', '86.22C'], 'dentiste': ['86.23Z'], 'kine': ['86.90E'], 'kinesitherapeute': ['86.90E'], 'infirmier': ['86.90D'],
+  'pharmacie': ['47.73Z'], 'opticien': ['47.78A'], 'veterinaire': ['75.00Z'], 'notaire': ['69.10Z'], 'avocat': ['69.10Z'],
+  'comptable': ['69.20Z'], 'architecte': ['71.11Z'], 'diagnostiqueur': ['71.20B'], 'courtier': ['66.19B', '66.22Z'], 'assurance': ['65.11Z', '65.12Z', '66.22Z'],
+  'banque': ['64.19Z'], 'auto ecole': ['85.53Z'], 'salle de sport': ['93.13Z'], 'creche': ['88.91A'], 'ehpad': ['87.10A'], 'pompes funebres': ['96.03Z'],
+  'agriculteur': ['01.11Z', '01.13Z', '01.21Z', '01.41Z', '01.50Z'], 'viticulteur': ['01.21Z', '11.02B'],
+};
+const racine = w => w.length > 4 ? w.replace(/[sx]$/, '') : w;   // pluriel : agences → agence
+const motsDe = t => norm(t).replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(w => w && !MOTS_VIDES.includes(w)).map(racine);
+const LIBELLES = Object.fromEntries(Object.entries(NAFS).map(([c, l]) => [c, motsDe(l)]));
+
+/** Codes APE correspondant à une recherche : code exact, synonymes, métiers, puis libellés officiels contenant tous les mots. */
+function rechercheCodes(q) {
+  const brut = q.trim();
+  const m = brut.toUpperCase().replace(/\s/g, '').match(/^(\d{2})\.?(\d{2})([A-Z])$/);
+  if (m && NAFS[`${m[1]}.${m[2]}${m[3]}`]) return [`${m[1]}.${m[2]}${m[3]}`];
+  const mots = motsDe(brut);
+  if (!mots.length) return [];
+  const qn = mots.join(' ');
+  const res = new Set();
+  Object.entries(SYNONYMES).forEach(([k, cs]) => {
+    const kn = motsDe(k).join(' ');
+    if (kn === qn || (' ' + qn + ' ').includes(' ' + kn + ' ') || (mots.length === 1 && kn.startsWith(qn) && qn.length >= 4)) cs.forEach(c => res.add(c));
+  });
+  Object.entries(METIERS).forEach(([nom, cs]) => {
+    const mn = motsDe(nom);
+    if (mots.every(w => mn.some(x => x.startsWith(w)))) cs.forEach(c => res.add(c));
+  });
+  Object.entries(LIBELLES).forEach(([c, lm]) => {
+    if (mots.every(w => w.length >= 3 && lm.some(x => x.startsWith(w)))) res.add(c);
+  });
+  return [...res].filter(c => NAFS[c]).sort();
+}
+
+function afficherRecherche() {
+  const q = $('smartIn').value;
+  const codes = q.trim().length >= 2 ? rechercheCodes(q) : [];
+  if (!q.trim()) { $('smartRes').hidden = true; return; }
+  $('smartRes').hidden = false;
+  $('smartCount').innerHTML = codes.length ? `<b>${codes.length} code(s) APE</b> correspondent à « ${q.trim().replace(/</g, '&lt;')} »` : 'Aucun code trouvé : essaie un autre mot (ex. « viande », « chauffage », « coiffure »).';
+  $('smartList').innerHTML = codes.map(c => `<label class="${nafs.includes(c) ? 'deja' : ''}"><input type="checkbox" value="${c}" ${nafs.includes(c) ? 'disabled' : 'checked'}> <span><b>${c}</b> – ${NAFS[c]}${nafs.includes(c) ? ' (déjà ajouté)' : ''}</span></label>`).join('');
+  $('smartAdd').disabled = !codes.some(c => !nafs.includes(c));
+  $('smartAdd').textContent = 'Ajouter';
+}
+function ajouterRecherche() {
+  const choisis = [...$('smartList').querySelectorAll('input:checked:not(:disabled)')].map(i => i.value);
+  if (!choisis.length) return;
+  ajouterCodes(choisis);
+  $('smartIn').value = ''; $('smartRes').hidden = true; render();
+}
+$('smartIn').addEventListener('input', afficherRecherche);
+$('smartIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ajouterRecherche(); } if (e.key === 'Escape') { $('smartIn').value = ''; $('smartRes').hidden = true; } });
+$('smartAdd').onclick = ajouterRecherche;
+$('smartClose').onclick = () => { $('smartIn').value = ''; $('smartRes').hidden = true; };
+
+// ===== Villes : autocomplétion via l'annuaire officiel des communes (geo.api.gouv.fr) =====
+(function villesAuto() {
+  const input = $('villeIn'), box = $('villeSugg');
+  let items = [], idx = -1, timer = null, seq = 0;
+  const choisir = c => {
+    const v = { code: c.code, nom: c.nom, cp: (c.codesPostaux || [])[0] || '', dep: c.codeDepartement,
+      lat: c.centre && c.centre.coordinates[1], lon: c.centre && c.centre.coordinates[0], rayon: $('rayon').value };
+    if (!villes.some(x => x.code === v.code && x.rayon === v.rayon)) villes.push(v);
+    input.value = ''; box.style.display = 'none'; render();
+  };
+  const chercher = async () => {
+    const q = input.value.trim(), n = ++seq;
+    if (q.length < 2) { box.style.display = 'none'; return; }
+    const champ = /^\d{5}$/.test(q) ? `codePostal=${q}` : `nom=${encodeURIComponent(q)}&boost=population`;
+    try {
+      const r = await fetch(`https://geo.api.gouv.fr/communes?${champ}&fields=nom,code,codesPostaux,codeDepartement,centre,population&limit=10`);
+      if (n !== seq) return;
+      items = await r.json(); idx = items.length ? 0 : -1;
+      box.innerHTML = items.map((c, i) => `<div class="${i === 0 ? 'on' : ''}"><b>${c.nom}</b> – ${(c.codesPostaux || [])[0] || ''} (${c.codeDepartement})${c.population ? ` <span class="muted">· ${c.population.toLocaleString('fr-FR')} hab.</span>` : ''}</div>`).join('')
+        || '<div class="muted">Aucune commune trouvée</div>';
+      box.style.display = 'block';
+      [...box.children].forEach((d, i) => d.onmousedown = e => { e.preventDefault(); if (items[i]) choisir(items[i]); });
+    } catch (e) { box.innerHTML = '<div class="err">Annuaire des communes injoignable, réessaie.</div>'; box.style.display = 'block'; }
+  };
+  input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(chercher, 250); });
+  input.addEventListener('blur', () => setTimeout(() => box.style.display = 'none', 150));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); if (!items.length) return;
+      idx = (idx + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      [...box.children].forEach((d, i) => d.classList.toggle('on', i === idx));
+    } else if (e.key === 'Enter') { e.preventDefault(); if (idx >= 0 && items[idx]) choisir(items[idx]); }
+  });
+})();
+
+// Menus déroulants
+(function remplirMenus() {
+  const o = (v, t) => `<option value="${v}">${t.replace(/</g, '&lt;')}</option>`;
+  $('depSel').innerHTML += Object.entries(DEPS)
+    .sort((a, b) => (a[0].length === 3) - (b[0].length === 3) || a[0].localeCompare(b[0]))
+    .map(([k, v]) => o(k, `${k} – ${v}`)).join('');
+  let h = '<optgroup label="Métiers courants">' + Object.keys(METIERS).sort((a, b) => a.localeCompare(b, 'fr'))
+    .map(m => o('m:' + m, `${m} (${METIERS[m].join(', ')})`)).join('') + '</optgroup>';
+  const parDiv = {};
+  Object.entries(NAFS).forEach(([c, l]) => (parDiv[c.slice(0, 2)] = parDiv[c.slice(0, 2)] || []).push([c, l]));
+  Object.keys(parDiv).sort().forEach(dv => {
+    h += `<optgroup label="${dv} – ${(DIVISIONS[dv] || '').replace(/"/g, '&quot;')}">` +
+      parDiv[dv].map(([c, l]) => o(c, `${c} – ${l}`)).join('') + '</optgroup>';
+  });
+  $('nafSel').innerHTML += h;
+  $('depSel').onchange = () => { const d = $('depSel').value; if (d && !deps.includes(d)) deps.push(d); $('depSel').value = ''; render(); };
+  $('nafSel').onchange = () => { const v = $('nafSel').value; if (v) ajouterNaf(v); $('nafSel').value = ''; render(); };
+})();
+
+render();
+
+async function appel(url) {
+  for (let essai = 0; essai < 6; essai++) {
+    try {
+      const r = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (r.ok) return r.json();
+      if (r.status === 429 || r.status >= 500) { log(`  réponse ${r.status}, nouvel essai…`); await sleep(2000 * (essai + 1)); continue; }
+      throw new Error('Code ' + r.status + ' – ' + (await r.text()).slice(0, 150));
+    } catch (e) {
+      if (essai === 5) throw e;
+      log('  ' + e.message + ', nouvel essai…'); await sleep(2000 * (essai + 1));
+    }
+  }
+}
+
+// L'établissement est-il dans le département ? (code commune INSEE, sinon code postal)
+function dansDep(e, dep) {
+  const commune = String(e.commune || '');
+  if (commune) return commune.startsWith(dep);
+  const cp = String(e.code_postal || '');
+  if (dep === '2A') return /^20[01]/.test(cp);
+  if (dep === '2B') return /^20[2-6]/.test(cp);
+  return cp.startsWith(dep);
+}
+function depDe(e) {
+  const c = String(e.commune || ''), cp = String(e.code_postal || '');
+  if (c) return c.startsWith('97') ? c.slice(0, 3) : c.slice(0, 2);
+  return cp.startsWith('97') ? cp.slice(0, 3) : cp.slice(0, 2);
+}
+function distanceKm(lat1, lon1, lat2, lon2) {
+  const r = Math.PI / 180, a = Math.sin((lat2 - lat1) * r / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin((lon2 - lon1) * r / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(a));
+}
+const HORS_CIBLE = /(^|[^a-z])(sci|scpi|sccv|gfa|asl|aful)([^a-z]|$)|societe civile|co ?proprie|syndic(at)? (de |des |du )?(la |l')?(residence|copro|immeuble)|association syndicale|indivision|groupement foncier/;
+
+let lignes = [];
+$('go').onclick = async () => {
+  if ((!deps.length && !villes.length) || !nafs.length) { $('status').innerHTML = '<span class="err">Choisis au moins un département ou une ville, et un code APE.</span>'; return; }
+  $('go').disabled = true; lignes = []; $('log').textContent = ''; $('result').hidden = true; $('prog').style.width = '0';
+  const vus = new Set(); const st = { ei: 0, hors: 0, fermes: 0, sci: 0, inexpl: 0, plafond: [] };
+  const exEI = $('optEI').checked, exSCI = $('optSCI').checked;
+  try {
+    // Zones : départements entiers, villes seules (code commune) ou villes + rayon (recherche géographique)
+    const zones = deps.map(d => ({ nom: d, filtre: `departement=${d}`, base: API, garde: e => dansDep(e, d) }))
+      .concat(villes.map(v => +v.rayon && v.lat
+        ? { nom: `${v.nom} + ${v.rayon} km`, filtre: `lat=${v.lat}&long=${v.lon}&radius=${v.rayon}`, base: API.replace('/search', '/near_point'),
+            garde: e => !e.latitude || distanceKm(v.lat, v.lon, +e.latitude, +e.longitude) <= +v.rayon + 0.5 }
+        : { nom: v.nom, filtre: `code_commune=${v.code}`, base: API, garde: e => !e.commune || String(e.commune) === v.code }));
+    const plan = [];
+    for (const z of zones) for (const naf of nafs) {
+      const url = p => `${z.base}?activite_principale=${naf}&${z.filtre}&etat_administratif=A&per_page=25&page=${p}`;
+      const p1 = await appel(url(1));
+      const pages = Math.min(p1.total_pages || 1, 400);
+      if ((p1.total_pages || 0) > 400) st.plafond.push(`${z.nom} / ${naf}`);
+      plan.push({ z, naf, pages, premiere: p1, url });
+      log(`${z.nom} – ${naf} : ${p1.total_results} sociétés, ${p1.total_pages} page(s)`);
+      await sleep(160);
+    }
+    const total = plan.reduce((s, p) => s + p.pages, 0); let fait = 0;
+    for (const { z, naf, pages, premiere, url } of plan) {
+      for (let page = 1; page <= pages; page++) {
+        const data = page === 1 ? premiere : await appel(url(page));
+        for (const u of data.results || []) {
+          const cj = String(u.nature_juridique || '');
+          if (exEI && ((u.complements && u.complements.est_entrepreneur_individuel) || cj.startsWith('1'))) { st.ei++; continue; }
+          const etabs = (u.matching_etablissements && u.matching_etablissements.length) ? u.matching_etablissements : (u.siege ? [u.siege] : []);
+          for (const e of etabs) {
+            if (!z.garde(e)) { st.hors++; continue; }
+            if (e.etat_administratif && e.etat_administratif !== 'A') { st.fermes++; continue; }
+            // Inexploitables : données protégées (nom/adresse masqués), sans adresse, ou établissement d'une autre activité
+            if (u.statut_diffusion === 'P' || e.statut_diffusion_etablissement === 'P' || !String(e.adresse || '').trim() ||
+                (e.activite_principale && !nafs.includes(e.activite_principale))) { st.inexpl++; continue; }
+            if (!e.siret || vus.has(e.siret)) continue;
+            const nom = u.nom_complet || u.nom_raison_sociale || '';
+            if (exSCI && (HORS_CIBLE.test(norm(nom)) || cj.startsWith('65') || cj === '9110')) { st.sci++; continue; }
+            vus.add(e.siret);
+            const d = (u.dirigeants || []).find(x => x.type_dirigeant === 'personne physique' && x.nom);
+            const gerant = d ? `${String(d.prenoms || '').split(' ')[0]} ${d.nom}`.trim() : '';
+            const ligne = [e.siret, nom, (e.liste_enseignes || []).filter(Boolean).join(' / '), e.nom_commercial || '',
+              e.activite_principale || naf, e.adresse || '', e.code_postal || '', e.libelle_commune || '', depDe(e),
+              gerant, d ? (d.qualite || '') : '', u.tranche_effectif_salarie || '', u.date_creation || '', '', '', '', ''];
+            ligne.lat = +e.latitude || null; ligne.lon = +e.longitude || null;
+            lignes.push(ligne);
+          }
+        }
+        fait++;
+        $('prog').style.width = Math.round(100 * fait / total) + '%';
+        $('status').textContent = `Page ${fait} / ${total} – ${lignes.length} établissements retenus`;
+        await sleep(160);   // l'API accepte 7 appels / seconde
+      }
+    }
+    let osm = '';
+    if ($('optOSM').checked && lignes.length) {
+      const n = await completerOSM(lignes);
+      osm = `<br>OpenStreetMap : <b>${n.tel}</b> téléphones, <b>${n.site}</b> sites web et <b>${n.email}</b> emails trouvés sur ${lignes.length} établissements. ` +
+        `Pour chercher les emails sur les sites web, lance <b>chercherEmailsSurSites</b> dans le Google Sheet.`;
+    }
+    genererSortie();
+    $('resume').innerHTML = `<span class="ok">${lignes.length} établissements</span> trouvés. Écartés : ${st.ei} entreprises individuelles, ${st.sci} SCI/copropriétés, ${st.hors} établissements hors zone, ${st.fermes} fermés, ${st.inexpl} inexploitables (données protégées, sans adresse ou autre activité).` +
+      (st.plafond.length ? `<br><span class="warn">Attention : le registre limite chaque recherche à 10 000 sociétés. Résultat incomplet pour ${st.plafond.join(', ')}.</span>` : '') + osm;
+    $('status').innerHTML = '<span class="ok">Terminé.</span>';
+    $('result').hidden = false;
+  } catch (e) {
+    $('status').innerHTML = `<span class="err">Erreur : ${e.message}</span>. Si le message parle de « Failed to fetch », réessaie dans quelques minutes.`;
+  }
+  $('go').disabled = false;
+};
+
+function genererSortie() {
+  const entete = ['siret', 'nom_complet', 'enseignes', 'nom_commercial', 'naf', 'adresse', 'code_postal', 'ville', 'departement', 'gerant', 'qualite',
+    'tranche_effectif', 'date_creation', 'telephone', 'site_web', 'email', 'source_contact'];
+  const propre = v => String(v == null ? '' : v).replace(/[\t\r\n]+/g, ' ').trim();
+  $('out').value = [entete, ...lignes].map(r => r.map(propre).join('\t')).join('\n');
+  $('apercu').innerHTML = '<tr>' + ['SIRET', 'Nom', 'Enseigne', 'APE', 'Ville', 'Gérant', 'Téléphone', 'Site', 'Email'].map(h => `<th>${h}</th>`).join('') + '</tr>' +
+    lignes.slice(0, 10).map(r => '<tr>' + [r[0], r[1], r[2], r[4], r[7], r[9], r[13], r[14], r[15]].map(v => `<td>${propre(v).replace(/</g, '&lt;')}</td>`).join('') + '</tr>').join('');
+}
+
+// ===== Complément gratuit : OpenStreetMap (Overpass) =====
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+const MOTS_GENERIQUES = new Set(['sarl', 'sas', 'sasu', 'eurl', 'sa', 'sci', 'snc', 'ste', 'societe', 'ets', 'etablissements', 'entreprise', 'groupe',
+  'france', 'services', 'service', 'immobilier', 'immobiliere', 'immo', 'agence', 'cabinet', 'boulangerie', 'patisserie', 'boucherie',
+  'charcuterie', 'restaurant', 'garage', 'pharmacie', 'coiffure', 'salon', 'chez', 'les', 'des', 'aux', 'and', 'the']);
+const motsNom = t => norm(t).replace(/[^a-z0-9]+/g, ' ').split(' ').filter(w => w.length >= 3 && !MOTS_GENERIQUES.has(w));
+function telFr(t) {
+  let d = String(t || '').split(/[;,/]/)[0].replace(/[^\d+]/g, '');
+  if (d.startsWith('+33')) d = '0' + d.slice(3); else if (d.startsWith('0033')) d = '0' + d.slice(4);
+  return /^0\d{9}$/.test(d) ? d.replace(/(\d{2})(?=\d)/g, '$1 ').trim() : String(t || '').split(';')[0].trim();
+}
+async function overpass(q) {
+  for (let essai = 0; essai < 6; essai++) {
+    const url = OVERPASS[essai % OVERPASS.length];
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) });
+      if (r.ok) return (await r.json()).elements || [];
+      log(`  OpenStreetMap occupé (${r.status}), nouvel essai…`);
+    } catch (e) { log('  OpenStreetMap injoignable, nouvel essai…'); }
+    await sleep(3000 * (essai + 1));
+  }
+  return [];
+}
+/** Cherche chaque établissement dans OpenStreetMap (même endroit + nom proche) et récupère tél, site, email. */
+async function completerOSM(lignes) {
+  const geo = lignes.filter(r => r.lat && r.lon);
+  const cases = {};
+  geo.forEach(r => { const k = `${Math.floor(r.lat * 20)}_${Math.floor(r.lon * 20)}`; (cases[k] = cases[k] || []).push(r); });
+  const cles = Object.keys(cases); let fait = 0; const n = { tel: 0, site: 0, email: 0 };
+  log(`OpenStreetMap : ${geo.length} établissements géolocalisés, ${cles.length} zone(s) à interroger`);
+  for (const k of cles) {
+    const [a, b] = k.split('_').map(Number), m = 0.004;
+    const bb = `${(a / 20 - m).toFixed(4)},${(b / 20 - m).toFixed(4)},${((a + 1) / 20 + m).toFixed(4)},${((b + 1) / 20 + m).toFixed(4)}`;
+    const q = `[out:json][timeout:90];(` + ['phone', 'contact:phone', 'website', 'contact:website', 'email', 'contact:email']
+      .map(t => `nwr["name"]["${t}"](${bb});`).join('') + `);out center tags;`;
+    const pois = (await overpass(q)).map(el => ({ lat: el.lat || (el.center && el.center.lat), lon: el.lon || (el.center && el.center.lon), t: el.tags || {} }))
+      .filter(p => p.lat && p.t.name).map(p => Object.assign(p, { mots: motsNom(p.t.name + ' ' + (p.t.brand || '')) }));
+    for (const r of cases[k]) {
+      const motsR = new Set(motsNom(`${r[1]} ${r[2]} ${r[3]}`));
+      let best = null, bestScore = 0;
+      for (const p of pois) {
+        const dist = distanceKm(r.lat, r.lon, p.lat, p.lon) * 1000;
+        if (dist > 250) continue;
+        const communs = p.mots.filter(w => motsR.has(w)).length;
+        // Il faut un mot du nom en commun ; sans mot distinctif au registre (nom 100 % générique), on accepte la même adresse exacte (≤ 20 m)
+        const score = communs ? 2 + communs - dist / 250 : (!motsR.size && dist <= 20 ? 1 : 0);
+        if (score > bestScore) { bestScore = score; best = p; }
+      }
+      if (!best || bestScore < 0.5) continue;
+      const t = best.t;
+      const tel = telFr(t.phone || t['contact:phone'] || t['contact:mobile'] || '');
+      const site = (t.website || t['contact:website'] || t.url || '').split(';')[0].trim();
+      const email = (t.email || t['contact:email'] || '').split(';')[0].trim().toLowerCase();
+      if (tel && !r[13]) { r[13] = tel; n.tel++; }
+      if (site && !r[14]) { r[14] = site; n.site++; }
+      if (email && !r[15]) { r[15] = email; n.email++; }
+      if (tel || site || email) r[16] = `OpenStreetMap (${best.t.name})`;
+    }
+    fait++;
+    $('prog').style.width = Math.round(100 * fait / cles.length) + '%';
+    $('status').textContent = `OpenStreetMap : zone ${fait} / ${cles.length} – ${n.tel} tél., ${n.site} sites, ${n.email} emails`;
+    await sleep(1100);
+  }
+  return n;
+}
+
+// Script Apps Script d'enrichissement, intégré à la page
+$('copyGs').onclick = async () => {
+  const code = $('scriptGs').textContent.replace(/^\n/, '');
+  try { await navigator.clipboard.writeText(code); }
+  catch (e) { const t = document.createElement('textarea'); t.value = code; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+  $('copyGs').textContent = 'Script copié ✓'; setTimeout(() => $('copyGs').textContent = 'Copier le script', 2500);
+};
+$('dlGs').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([$('scriptGs').textContent.replace(/^\n/, '')], { type: 'text/plain;charset=utf-8' }));
+  a.download = 'enrichissement_emails.gs'; a.click();
+};
+
+$('copy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('out').value); }
+  catch (e) { $('out').select(); document.execCommand('copy'); }
+  $('copy').textContent = 'Copié ✓'; setTimeout(() => $('copy').textContent = 'Copier le tableau', 2000);
+};
+$('dl').onclick = () => {
+  const csv = $('out').value.split('\n').map(l => l.split('\t').map(v => '"' + v.replace(/"/g, '""') + '"').join(';')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+  const zonesNom = deps.concat(villes.map(v => norm(v.nom).replace(/[^a-z0-9]+/g, '-'))).join('_').slice(0, 60);
+  a.download = `entreprises_${zonesNom}_${nafs.join('-').replace(/\./g, '')}.csv`.slice(0, 120); a.click();
+};
+</script>
+</body>
+</html>
