@@ -40,16 +40,17 @@
   .bar > div { height:100%; width:0; background:var(--accent); transition:width .2s; }
   #log { font-family:Consolas, monospace; font-size:12px; color:var(--muted); white-space:pre-wrap; max-height:170px; overflow:auto; }
   .ok { color:var(--ok); font-weight:bold; } .err { color:var(--err); font-weight:bold; } .warn { color:var(--warn); }
-  .rayonBox { margin-top:12px; padding:14px 16px 10px; border:1px solid var(--line); border-radius:10px; background:var(--accent2); }
-  .rayonTete { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:14px; }
+  .chips:empty { min-height:0; margin-top:0; }
+  .rayonBox { margin-top:8px; padding:8px 14px 4px; border:1px solid var(--line); border-radius:8px; background:var(--accent2); }
+  .rayonTete { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:13px; }
   .rayonTete label { font-weight:bold; }
-  .rayonTete output { font-weight:bold; color:var(--accent); font-size:16px; font-variant-numeric:tabular-nums; }
-  input[type=range] { -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:6px; margin:14px 0 6px; cursor:pointer;
+  .rayonTete output { font-weight:bold; color:var(--accent); font-size:14px; font-variant-numeric:tabular-nums; }
+  input[type=range] { -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:4px; margin:8px 0 4px; cursor:pointer;
     background:linear-gradient(to right, var(--accent) var(--pct, 0%), var(--line) var(--pct, 0%)); }
-  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:var(--card); border:3px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.25); }
-  input[type=range]::-moz-range-thumb { width:20px; height:20px; border-radius:50%; background:var(--card); border:3px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.25); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--card); border:3px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.25); }
+  input[type=range]::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--card); border:3px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.25); }
   input[type=range]:focus-visible { outline:2px solid var(--accent); outline-offset:6px; }
-  .graduations { position:relative; height:16px; font-size:11px; color:var(--muted); margin:0 12px; }
+  .graduations { position:relative; height:14px; font-size:10px; color:var(--muted); margin:0 9px; }
   .graduations span { position:absolute; transform:translateX(-50%); white-space:nowrap; }
   .rayonBox.inactif { opacity:.55; }
   .signature { text-align:center; font-size:13px; color:var(--muted); padding:8px 0 24px; letter-spacing:.3px; }
