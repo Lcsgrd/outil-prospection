@@ -87,7 +87,7 @@
       </ol>
 
       <h3>2. Compléter les emails gratuitement (Google Sheets)</h3>
-      <p>L'outil remplit déjà téléphone, site web et parfois email grâce à OpenStreetMap. Pour aller chercher l'email sur le site web des entreprises, dans <b>le Google Sheet de ton choix</b> :</p>
+      <p>L'outil remplit déjà téléphone, site web et parfois email grâce à OpenStreetMap. Pour aller chercher l'email sur le site web des entreprises, dans <b>le Google Sheet de ton choix</b> (artisans, commerçants, autres listes) :</p>
       <ol>
         <li>Ouvre ou crée un Google Sheet, puis Fichier &gt; Importer &gt; ton CSV (dans un nouvel onglet ou un onglet existant).</li>
         <li><b>Une seule fois par fichier</b> : clique sur <b>Copier le script</b> ci-dessous, puis dans ton Google Sheet : Extensions &gt; Apps Script, efface le contenu, colle (Ctrl + V), Ctrl + S, et recharge le Google Sheet. Un menu <b>Prospection</b> apparaît en haut.
@@ -96,7 +96,14 @@
         <li>Chaque passage traite 80 à 150 sites (limite de 6 minutes de Google). <b>Relance jusqu'au message « plus rien à analyser »</b>. La colonne « Site analysé le » évite d'analyser deux fois le même site.</li>
         <li>La première fois, Google demande une autorisation : Paramètres avancés &gt; Accéder au projet &gt; Autoriser.</li>
       </ol>
-      <p style="margin-top:6px">Pour l'agent de prospection immobilière, c'est déjà intégré : colle le tableau dans son onglet <code>Import</code>, lance <code>importerBase</code>, puis <code>chercherEmailsSurSites</code> depuis l'onglet <code>Agences</code>.</p>
+      <div class="alerte" style="border-left-color:var(--accent)"><b>Tu utilises l'agent de prospection immobilière ?</b> Rien à installer, tout est déjà dans ton fichier « Prospection agences 38 » :
+        <ol>
+          <li>Ici, clique sur <b>Copier le tableau</b>.</li>
+          <li>Ouvre ton fichier « Prospection agences 38 », va dans l'onglet <b>Import</b>, clique sur la case <b>A1</b> et colle (Ctrl + V).</li>
+          <li>En haut du Google Sheet : menu <b>Prospection &gt; 1. Importer les agences</b>.</li>
+          <li>Puis : menu <b>Prospection &gt; 2. Chercher les emails sur les sites</b>. Relance-le jusqu'au message « plus rien à analyser ».</li>
+        </ol>
+        C'est tout. Le lendemain à 8h, l'agent prépare les mails des agences pour lesquelles il a trouvé un email.</div>
 
       <h3>3. Ce que contient le fichier</h3>
       <table>
