@@ -71,6 +71,7 @@
   .saisie:hover { border-color:var(--line); } .saisie:focus { border-color:var(--accent); background:var(--card); outline:none; }
   .saisie.email { width:190px; } .saisie.manuel { background:#fef9c3; color:#713f12; }
   .cellTel { display:flex; align-items:center; gap:2px; } .cellTel a { font-size:12px; text-decoration:none; }
+  .badge.nouv { background:#bbf7d0; color:#14532d; }
   .chips:empty { min-height:0; margin-top:0; }
   .rayonBox { margin-top:8px; padding:8px 14px 4px; border:1px solid var(--line); border-radius:8px; background:var(--accent2); }
   .rayonTete { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:13px; }
@@ -130,6 +131,7 @@
         <li>Dans le <b>tableau</b> : recherche rapide, filtres (avec téléphone, sans email, récentes, masquer les déjà connues) et tri. Tu peux taper un téléphone ou un email trouvé à la main directement dans sa case (fond jaune) : il est repris dans le CSV. Coche « Seulement les lignes affichées » pour n'exporter que ta sélection.</li>
         <li>Onglet <b>Carte</b> : chaque entreprise en point (vert = téléphone et email, orange = il en manque un, gris = rien, jaune = déjà connue), avec le cercle du rayon. Clique sur un point pour voir ses coordonnées.</li>
         <li>Pour refaire la même recherche plus tard : donne-lui un nom et clique sur <b>Enregistrer cette recherche</b>. Elle apparaît en haut dans « Mes recherches » (enregistrée dans ton navigateur, sur cet ordinateur). La page se rouvre aussi avec tes derniers choix.</li>
+        <li><b>Nouveautés</b> : quand tu relances une recherche enregistrée (même critères), les entreprises apparues depuis la dernière fois portent le badge « Nouvelle », et le filtre « Seulement les nouvelles » te permet de ne traiter qu'elles.</li>
         <li>Pour donner la même recherche à un collègue : clique sur <b>Copier le lien à partager</b> et envoie-le-lui. En l'ouvrant, l'outil se préremplit avec tes critères ; il n'a plus qu'à lancer.</li>
       </ol>
 
@@ -280,6 +282,7 @@
         <label><input type="checkbox" id="fSansEmail"> Sans email</label>
         <label><input type="checkbox" id="fRecent"> Récentes</label>
         <label><input type="checkbox" id="fMasquer"> Masquer les déjà connues</label>
+        <label id="fNouvBox" hidden><input type="checkbox" id="fNouv"> <b>Seulement les nouvelles</b></label>
         <select id="tTri" aria-label="Trier"><option value="">Ordre du registre</option><option value="ville">Trier par ville</option><option value="nom">Trier par nom</option><option value="date">Plus récentes d'abord</option></select>
       </div>
       <div class="tableau"><table class="apercu" id="apercu"></table></div>
@@ -675,7 +678,11 @@ $('rayon').addEventListener('input', render);
 })();
 
 // ===== Recherches enregistrées et mémoire des derniers choix (stockées dans ce navigateur) =====
-const CLE_RECH = 'outilProspection.recherches', CLE_DERNIER = 'outilProspection.dernier';
+const CLE_RECH = 'outilProspection.recherches', CLE_DERNIER = 'outilProspection.dernier', CLE_VUS = 'outilProspection.vus.';
+let rechActive = null, derniereSig = '';
+/** Empreinte des critères : sert à savoir si la recherche lancée est bien la recherche enregistrée. */
+const signature = e => JSON.stringify([[...(e.deps || [])].sort(), (e.villes || []).map(v => v.code).sort(), +(e.villes || []).length && +e.rayon,
+  [...(e.nafs || [])].sort(), !!e.ei, !!e.sci, e.age || '0', e.taille || '']);
 const lireLS = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch (e) { return def; } };
 const ecrireLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* navigateur privé */ } };
 function etatActuel() {
@@ -701,7 +708,7 @@ function afficherMesRecherches() {
   liste.forEach((r, i) => {
     const b = document.createElement('span'); b.className = 'rech';
     const ouvrir = document.createElement('button'); ouvrir.textContent = r.nom; ouvrir.title = 'Recharger cette recherche';
-    ouvrir.onclick = () => { appliquerEtat(r.etat); $('saveMsg').textContent = `« ${r.nom} » chargée : clique sur Lancer la recherche.`; };
+    ouvrir.onclick = () => { appliquerEtat(r.etat); rechActive = { nom: r.nom, sig: signature(r.etat) }; $('saveMsg').textContent = `« ${r.nom} » chargée : clique sur Lancer la recherche.`; };
     const suppr = document.createElement('button'); suppr.className = 'suppr'; suppr.textContent = '×'; suppr.title = 'Supprimer';
     suppr.onclick = () => { const l = lireLS(CLE_RECH, []); l.splice(i, 1); ecrireLS(CLE_RECH, l); afficherMesRecherches(); };
     b.append(ouvrir, suppr); $('mesRechListe').appendChild(b);
@@ -713,6 +720,9 @@ $('saveRech').onclick = () => {
   if ((!deps.length && !villes.length) || !nafs.length) { $('saveMsg').textContent = 'Choisis d\'abord une zone et un métier.'; return; }
   const l = lireLS(CLE_RECH, []).filter(r => r.nom !== nom);
   l.push({ nom, etat: etatActuel() }); ecrireLS(CLE_RECH, l);
+  rechActive = { nom, sig: signature(etatActuel()) };
+  // si des résultats correspondent déjà à ces critères, ils servent de point de départ pour repérer les nouveautés
+  if (lignes.length && derniereSig === rechActive.sig) ecrireLS(CLE_VUS + nom, { date: new Date().toISOString().slice(0, 10), sirets: lignes.map(r => r[0]) });
   $('nomRech').value = ''; $('saveMsg').textContent = `« ${nom} » enregistrée.`; afficherMesRecherches();
 };
 $('nomRech').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('saveRech').click(); } });
@@ -741,6 +751,9 @@ if (depuisPartage) {
 } else {
   const dernier = lireLS(CLE_DERNIER, null);
   if (dernier) appliquerEtat(dernier); else render();
+  // si les derniers choix correspondent à une recherche enregistrée, on la considère comme active (pour les nouveautés)
+  const sig = signature(etatActuel()), r = lireLS(CLE_RECH, []).find(x => signature(x.etat) === sig);
+  if (r) rechActive = { nom: r.nom, sig };
 }
 
 async function appel(url) {
@@ -779,6 +792,7 @@ function distanceKm(lat1, lon1, lat2, lon2) {
   const r = Math.PI / 180, a = Math.sin((lat2 - lat1) * r / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin((lon2 - lon1) * r / 2) ** 2;
   return 12742 * Math.asin(Math.sqrt(a));
 }
+const esc_ = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const HORS_CIBLE = /(^|[^a-z])(sci|scpi|sccv|gfa|asl|aful)([^a-z]|$)|societe civile|co ?proprie|syndic(at)? (de |des |du )?(la |l')?(residence|copro|immeuble)|association syndicale|indivision|groupement foncier/;
 
 let lignes = [];
@@ -837,7 +851,7 @@ $('go').onclick = async () => {
             const gerant = d ? `${String(d.prenoms || '').split(' ')[0]} ${d.nom}`.trim() : '';
             const ligne = [e.siret, nom, (e.liste_enseignes || []).filter(Boolean).join(' / '), e.nom_commercial || '',
               e.activite_principale || naf, e.adresse || '', e.code_postal || '', e.libelle_commune || '', depDe(e),
-              gerant, d ? (d.qualite || '') : '', libelleEffectif(tr), creee, '', '', '', '', creee && creee >= unAn ? 'oui' : '', ''];
+              gerant, d ? (d.qualite || '') : '', libelleEffectif(tr), creee, '', '', '', '', creee && creee >= unAn ? 'oui' : '', '', ''];
             ligne.lat = +e.latitude || null; ligne.lon = +e.longitude || null;
             lignes.push(ligne);
           }
@@ -850,11 +864,26 @@ $('go').onclick = async () => {
     }
     // 1) Le fichier est disponible tout de suite
     const nbConnues = marquerConnues();
+    // Nouveautés depuis la dernière exécution de la recherche enregistrée
+    derniereSig = signature(etatActuel());
+    let msgNouv = '';
+    $('fNouvBox').hidden = true; $('fNouv').checked = false;
+    if (rechActive && rechActive.sig === derniereSig) {
+      const avant = lireLS(CLE_VUS + rechActive.nom, null);
+      if (avant) {
+        const vus = new Set(avant.sirets);
+        lignes.forEach(r => r[19] = vus.has(r[0]) ? '' : 'oui');
+        const nb = lignes.filter(r => r[19]).length;
+        msgNouv = `<br><b>${nb} nouvelle(s)</b> depuis le ${avant.date.split('-').reverse().join('/')} pour « ${esc_(rechActive.nom)} »` + (nb ? ' (badge « Nouvelle », filtre « Seulement les nouvelles »).' : '.');
+        $('fNouvBox').hidden = !nb;
+      } else msgNouv = `<br>Première exécution de « ${esc_(rechActive.nom)} » : la prochaine fois, les nouvelles entreprises seront signalées.`;
+      ecrireLS(CLE_VUS + rechActive.nom, { date: new Date().toISOString().slice(0, 10), sirets: lignes.map(r => r[0]) });
+    }
     genererSortie();
     const resume = `<span class="ok">${lignes.length} établissements</span> trouvés. Écartés : ${st.ei} entreprises individuelles, ${st.sci} SCI/copropriétés, ${st.hors} établissements hors zone, ${st.fermes} fermés, ${st.inexpl} inexploitables (données protégées, sans adresse ou autre activité)` +
       (st.age ? `, ${st.age} trop anciennes` : '') + (st.taille ? `, ${st.taille} hors taille choisie` : '') + '.' +
       (lignes.filter(r => r[17]).length ? `<br>Dont <b>${lignes.filter(r => r[17]).length} créées il y a moins d'un an</b> (colonne « recente_moins_1_an »).` : '') +
-      (nbConnues ? `<br><span class="warn"><b>${nbConnues} déjà connue(s)</b> d'après ta liste (colonne « deja_connue »).</span>` : '') +
+      (nbConnues ? `<br><span class="warn"><b>${nbConnues} déjà connue(s)</b> d'après ta liste (colonne « deja_connue »).</span>` : '') + msgNouv +
       (st.plafond.length ? `<br><span class="warn">Attention : le registre limite chaque recherche à 10 000 sociétés. Résultat incomplet pour ${st.plafond.join(', ')}.</span>` : '');
     $('resume').innerHTML = resume;
     $('result').hidden = false;
@@ -889,7 +918,7 @@ function vueLignes() {
   let v = lignes.filter(r =>
     (!q || norm(`${r[1]} ${r[2]} ${r[3]} ${r[7]} ${r[9]}`).includes(q)) &&
     (!$('fTel').checked || r[13]) && (!$('fSansEmail').checked || !r[15]) &&
-    (!$('fRecent').checked || r[17]) && (!$('fMasquer').checked || !r[18]));
+    (!$('fRecent').checked || r[17]) && (!$('fMasquer').checked || !r[18]) && (!$('fNouv').checked || r[19]));
   const tri = $('tTri').value;
   const nomDe = r => norm(r[3] || r[2] || r[1]);
   if (tri === 'ville') v = v.slice().sort((a, b) => norm(a[7]).localeCompare(norm(b[7])) || nomDe(a).localeCompare(nomDe(b)));
@@ -900,7 +929,7 @@ function vueLignes() {
 
 function genererSortie() {
   const entete = ['siret', 'nom_complet', 'enseignes', 'nom_commercial', 'naf', 'adresse', 'code_postal', 'ville', 'departement', 'gerant', 'qualite',
-    'effectif', 'date_creation', 'telephone', 'site_web', 'email', 'source_contact', 'recente_moins_1_an', 'deja_connue'];
+    'effectif', 'date_creation', 'telephone', 'site_web', 'email', 'source_contact', 'recente_moins_1_an', 'deja_connue', 'nouvelle_depuis_derniere_fois'];
   ENTETE_CSV = entete;
   construireCSV();
   // pas de rafraîchissement pendant une saisie dans le tableau (sinon le curseur saute)
@@ -930,7 +959,7 @@ function afficherTableau() {
     if (r[9] && !email) liens.push(`<a href="https://www.linkedin.com/search/results/people/?keywords=${enc(r[9] + ' ' + nom.replace(/\b(SARL|SAS|SASU|EURL|SA)\b/gi, ''))}" target="_blank" rel="noopener">LinkedIn</a>`);
     const siteUrl = site && (site.startsWith('http') ? site : 'https://' + site);
     return `<tr>
-      <td class="nom">${esc(nom)}${nom !== r[1] ? `<small>${esc(r[1])}</small>` : ''}<small>${esc(ville)} · ${esc(r[4])}</small>${r[18] ? `<span class="badge" title="${esc(r[18])}">Déjà connue</span>` : ''}</td>
+      <td class="nom">${esc(nom)}${nom !== r[1] ? `<small>${esc(r[1])}</small>` : ''}<small>${esc(ville)} · ${esc(r[4])}</small>${r[19] ? '<span class="badge nouv">Nouvelle</span> ' : ''}${r[18] ? `<span class="badge" title="${esc(r[18])}">Déjà connue</span>` : ''}</td>
       <td><div class="actions">${liens.join('') || '<span class="vide">complet</span>'}</div></td>
       <td><div class="cellTel"><input class="saisie${r.manuelTel ? ' manuel' : ''}" data-i="${lignes.indexOf(r)}" data-c="13" value="${esc(tel)}" placeholder="+ téléphone" aria-label="Téléphone">${tel ? `<a href="tel:${esc(tel.replace(/\s/g, ''))}" title="Appeler">📞</a>` : ''}</div></td>
       <td><input class="saisie email${r.manuelEmail ? ' manuel' : ''}" data-i="${lignes.indexOf(r)}" data-c="15" value="${esc(email)}" placeholder="+ email" aria-label="Email"></td>
@@ -1007,7 +1036,7 @@ function ouvrirOnglet(carteVisible) {
 $('ongTableau').onclick = () => ouvrirOnglet(false);
 $('ongCarte').onclick = () => ouvrirOnglet(true);
 
-['tFiltre', 'fTel', 'fSansEmail', 'fRecent', 'fMasquer', 'tTri'].forEach(id => $(id).addEventListener(id === 'tFiltre' ? 'input' : 'change', () => {
+['tFiltre', 'fTel', 'fSansEmail', 'fRecent', 'fMasquer', 'fNouv', 'tTri'].forEach(id => $(id).addEventListener(id === 'tFiltre' ? 'input' : 'change', () => {
   page = 0; afficherTableau(); if ($('exportFiltre').checked) construireCSV();
 }));
 $('exportFiltre').addEventListener('change', construireCSV);
