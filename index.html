@@ -923,7 +923,10 @@ let ENTETE_CSV = [];
 function construireCSV() {
   const propre = v => String(v == null ? '' : v).replace(/[\t\r\n]+/g, ' ').trim();
   const src = $('exportFiltre').checked ? vueLignes() : lignes;
-  $('out').value = [ENTETE_CSV, ...src].map(r => r.slice(0, ENTETE_CSV.length).map(propre).join('\t')).join('\n');
+  // SIRET et code postal forcés en texte (="…") : sinon Google Sheets / Excel les affichent en 5,29E+13 ou perdent le 0 de 01000
+  const texte = v => v ? `="${v}"` : '';
+  $('out').value = [ENTETE_CSV, ...src.map(r => r.slice(0, ENTETE_CSV.length).map((v, i) => i === 0 || i === 6 ? texte(propre(v)) : propre(v)))]
+    .map(r => r.join('\t')).join('\n');
 }
 /** Lignes affichées dans le tableau : recherche rapide, filtres et tri. */
 function vueLignes() {
@@ -1253,7 +1256,7 @@ $('dlLinkedin').onclick = () => {
   const lignesCsv = [['gerant', 'fonction', 'entreprise', 'ville', 'telephone', 'lien_recherche_linkedin', 'email_trouve', 'siret']].concat(src.map(r => {
     const nom = r[3] || r[2].split(' / ')[0] || r[1];
     const lien = 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(`${r[9]} ${nom.replace(/\b(SARL|SAS|SASU|EURL|SA)\b/gi, '').trim()}`);
-    return [r[9], r[10], nom, r[7], r[13], lien, '', r[0]];
+    return [r[9], r[10], nom, r[7], r[13], lien, '', r[0] ? `="${r[0]}"` : ''];
   }));
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\ufeff' + lignesCsv.map(l => l.map(q).join(';')).join('\n')], { type: 'text/csv;charset=utf-8' }));
