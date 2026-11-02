@@ -57,6 +57,13 @@
   label.bouton { display:inline-block; border:1px solid var(--accent); color:var(--accent); background:var(--card); border-radius:6px; padding:7px 12px; font-size:13px; font-weight:bold; cursor:pointer; }
   label.bouton:focus-within, label.bouton:hover { background:var(--accent2); }
   .badge { display:inline-block; margin-top:3px; padding:1px 7px; border-radius:10px; font-size:10px; font-weight:bold; background:#fde68a; color:#78350f; }
+  .onglets { display:flex; gap:4px; margin-top:16px; border-bottom:1px solid var(--line); }
+  .onglets button { background:none; color:var(--muted); border:0; border-bottom:3px solid transparent; border-radius:0; padding:8px 14px; font-size:14px; }
+  .onglets button[aria-selected="true"] { color:var(--accent); border-bottom-color:var(--accent); }
+  #carte { height:520px; margin-top:12px; border-radius:8px; border:1px solid var(--line); z-index:0; }
+  .legende { display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:8px; font-size:12px; align-items:center; }
+  .legende i { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:5px; vertical-align:-1px; border:1px solid rgba(0,0,0,.25); }
+  .popup b { font-size:13px; } .popup div { margin-top:3px; font-size:12px; } .popup .actions { margin-top:6px; }
   .chips:empty { min-height:0; margin-top:0; }
   .rayonBox { margin-top:8px; padding:8px 14px 4px; border:1px solid var(--line); border-radius:8px; background:var(--accent2); }
   .rayonTete { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:13px; }
@@ -113,6 +120,7 @@
         <li><b>Filtres</b> (facultatif) : <b>Créée depuis</b> pour ne garder que les entreprises récentes, <b>Taille</b> pour viser les structures sans salarié, petites (1 à 9) ou plus grosses (10 et plus).</li>
         <li>Clique sur <b>Lancer la recherche</b> et garde l'onglet ouvert. Compte environ 1 minute pour 300 entreprises, plus 1 à 5 minutes pour le complément OpenStreetMap.</li>
         <li>Clique sur <b>Télécharger en CSV</b> (ou <b>Copier le tableau</b>).</li>
+        <li>Onglet <b>Carte</b> : chaque entreprise en point (vert = téléphone et email, orange = il en manque un, gris = rien, jaune = déjà connue), avec le cercle du rayon. Clique sur un point pour voir ses coordonnées.</li>
         <li>Pour refaire la même recherche plus tard : donne-lui un nom et clique sur <b>Enregistrer cette recherche</b>. Elle apparaît en haut dans « Mes recherches » (enregistrée dans ton navigateur, sur cet ordinateur). La page se rouvre aussi avec tes derniers choix.</li>
         <li>Pour donner la même recherche à un collègue : clique sur <b>Copier le lien à partager</b> et envoie-le-lui. En l'ouvrant, l'outil se préremplit avec tes critères ; il n'a plus qu'à lancer.</li>
       </ol>
@@ -252,8 +260,22 @@
     <div class="row"><button id="copy">Copier le tableau</button><button class="sec" id="dl">Télécharger en CSV</button></div>
     <div class="osmBox" id="osmBox" hidden><span id="osmEtat"></span> <button class="sec petit" id="osmStop">Arrêter le complément</button></div>
     <p style="margin-top:12px">Pour trouver les emails manquants, suis l'étape 2 du <a href="#aide" onclick="document.getElementById('aide').open=true">mode d'emploi</a>.</p>
-    <div class="tableau"><table class="apercu" id="apercu"></table></div>
-    <div class="pagin"><span id="paginInfo"></span><span><button class="sec petit" id="pagePrec">‹ Précédent</button> <button class="sec petit" id="pageSuiv">Suivant ›</button></span></div>
+    <div class="onglets" role="tablist">
+      <button role="tab" id="ongTableau" aria-selected="true">Tableau</button>
+      <button role="tab" id="ongCarte" aria-selected="false">Carte</button>
+    </div>
+    <div id="vueTableau">
+      <div class="tableau"><table class="apercu" id="apercu"></table></div>
+      <div class="pagin"><span id="paginInfo"></span><span><button class="sec petit" id="pagePrec">‹ Précédent</button> <button class="sec petit" id="pageSuiv">Suivant ›</button></span></div>
+    </div>
+    <div id="vueCarte" hidden>
+      <div id="carte"></div>
+      <div class="legende">
+        <span><i style="background:#16a34a"></i>Téléphone et email</span><span><i style="background:#f59e0b"></i>Il en manque un</span>
+        <span><i style="background:#9ca3af"></i>Aucune coordonnée</span><span><i style="background:#facc15;border-color:#78350f"></i>Déjà connue</span>
+        <span id="carteInfo" class="muted"></span>
+      </div>
+    </div>
     <textarea id="out" readonly hidden></textarea>
   </div>
   <footer class="signature">By <b>LcsGrd</b></footer>
@@ -844,6 +866,7 @@ function genererSortie() {
   const propre = v => String(v == null ? '' : v).replace(/[\t\r\n]+/g, ' ').trim();
   $('out').value = [entete, ...lignes].map(r => r.map(propre).join('\t')).join('\n');
   afficherTableau();
+  if (!$('vueCarte').hidden) afficherCarte();
 }
 
 // ===== Tableau des résultats, avec liens de recherche rapide pour compléter à la main =====
@@ -880,6 +903,60 @@ function afficherTableau() {
   $('paginInfo').textContent = lignes.length ? `${page * PAR_PAGE + 1}–${Math.min((page + 1) * PAR_PAGE, lignes.length)} sur ${lignes.length} · ${lignes.filter(r => r[13]).length} avec téléphone · ${lignes.filter(r => r[15]).length} avec email · ${complets} complets` : '';
   $('pagePrec').disabled = page === 0; $('pageSuiv').disabled = page >= nbPages - 1;
 }
+// ===== Carte des résultats (Leaflet + fond OpenStreetMap, chargés à la première ouverture) =====
+let carte = null, coucheCarte = null;
+function chargerLeaflet() {
+  if (window.L) return Promise.resolve();
+  return new Promise((ok, ko) => {
+    const css = document.createElement('link'); css.rel = 'stylesheet';
+    css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'; document.head.appendChild(css);
+    const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';
+    sc.onload = ok; sc.onerror = ko; document.head.appendChild(sc);
+  });
+}
+async function afficherCarte() {
+  try { await chargerLeaflet(); } catch (e) { $('carteInfo').textContent = 'Carte indisponible (chargement impossible).'; return; }
+  if (!carte) {
+    carte = L.map('carte', { preferCanvas: true }).setView([45.4, 5.4], 8);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; contributeurs OpenStreetMap' }).addTo(carte);
+  }
+  setTimeout(() => carte.invalidateSize(), 50);
+  if (coucheCarte) coucheCarte.remove();
+  coucheCarte = L.layerGroup().addTo(carte);
+  const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const enc = encodeURIComponent, pts = [];
+  // Cercles du rayon autour des villes choisies
+  if (rayonKm()) villes.filter(v => v.lat).forEach(v => {
+    const c = L.circle([v.lat, v.lon], { radius: rayonKm() * 1000, color: '#1b5ea6', weight: 1.5, fillOpacity: 0.05, dashArray: '6 4' }).addTo(coucheCarte);
+    const bb = c.getBounds(); pts.push([bb.getSouth(), bb.getWest()], [bb.getNorth(), bb.getEast()]);
+  });
+  let sansPos = 0;
+  lignes.forEach(r => {
+    if (!r.lat || !r.lon) { sansPos++; return; }
+    const tel = r[13], email = r[15], connue = r[18];
+    const couleur = connue ? '#facc15' : tel && email ? '#16a34a' : (tel || email || r[14]) ? '#f59e0b' : '#9ca3af';
+    const nom = r[3] || r[2].split(' / ')[0] || r[1];
+    const popup = `<div class="popup"><b>${esc(nom)}</b><div>${esc(r[5])} · ${esc(r[7])}</div>` +
+      (tel ? `<div>📞 <a href="tel:${esc(tel.replace(/\s/g, ''))}">${esc(tel)}</a></div>` : '') + (email ? `<div>✉️ ${esc(email)}</div>` : '') +
+      (r[14] ? `<div>🌐 <a href="${esc(r[14].startsWith('http') ? r[14] : 'https://' + r[14])}" target="_blank" rel="noopener">${esc(r[14].replace(/^https?:\/\/(www\.)?/, '').slice(0, 35))}</a></div>` : '') +
+      (r[9] ? `<div>Gérant : ${esc(r[9])}</div>` : '') + (connue ? `<div><span class="badge">Déjà connue</span></div>` : '') +
+      `<div class="actions"><a href="https://www.google.com/search?q=${enc(nom + ' ' + r[7] + ' téléphone email')}" target="_blank" rel="noopener">Google</a>` +
+      `<a href="https://www.pagesjaunes.fr/annuaire/chercherlespros?quoiqui=${enc(nom)}&ou=${enc(r[7])}" target="_blank" rel="noopener">Pages Jaunes</a></div></div>`;
+    L.circleMarker([r.lat, r.lon], { radius: 6, color: connue ? '#78350f' : '#1f2937', weight: 1, fillColor: couleur, fillOpacity: 0.9 })
+      .bindPopup(popup).addTo(coucheCarte);
+    pts.push([r.lat, r.lon]);
+  });
+  if (pts.length) carte.fitBounds(pts, { padding: [24, 24], maxZoom: 14 });
+  $('carteInfo').textContent = `${lignes.length - sansPos} entreprise(s) sur la carte` + (sansPos ? ` · ${sansPos} sans position GPS au registre` : '');
+}
+function ouvrirOnglet(carteVisible) {
+  $('vueCarte').hidden = !carteVisible; $('vueTableau').hidden = carteVisible;
+  $('ongCarte').setAttribute('aria-selected', carteVisible); $('ongTableau').setAttribute('aria-selected', !carteVisible);
+  if (carteVisible) afficherCarte();
+}
+$('ongTableau').onclick = () => ouvrirOnglet(false);
+$('ongCarte').onclick = () => ouvrirOnglet(true);
+
 $('pagePrec').onclick = () => { page--; afficherTableau(); };
 $('pageSuiv').onclick = () => { page++; afficherTableau(); };
 
