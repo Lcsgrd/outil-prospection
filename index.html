@@ -45,6 +45,14 @@
   .filtres { display:flex; flex-wrap:wrap; gap:10px 18px; margin-top:12px; font-size:14px; }
   .filtres label { display:flex; align-items:center; gap:8px; }
   .filtres select { width:auto; padding:6px 9px; font-size:13px; }
+  .mesRech { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:10px 12px; margin:12px 0 0; border-radius:8px; background:var(--accent2); font-size:13px; }
+  #mesRechListe { display:flex; flex-wrap:wrap; gap:6px; }
+  .rech { display:inline-flex; align-items:center; border:1px solid var(--accent); border-radius:16px; background:var(--card); overflow:hidden; }
+  .rech button { background:none; color:var(--accent); border:0; padding:4px 10px; font-size:12px; font-weight:bold; }
+  .rech button.suppr { color:var(--muted); font-weight:normal; padding:4px 8px 4px 2px; font-size:14px; }
+  .enreg { margin-top:10px; }
+  .enreg input { flex:1 1 240px; min-width:0; padding:8px 10px; font-size:13px; }
+  .enreg button { padding:8px 14px; font-size:13px; }
   .chips:empty { min-height:0; margin-top:0; }
   .rayonBox { margin-top:8px; padding:8px 14px 4px; border:1px solid var(--line); border-radius:8px; background:var(--accent2); }
   .rayonTete { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:13px; }
@@ -100,6 +108,7 @@
         <li><b>Filtres</b> (facultatif) : <b>Créée depuis</b> pour ne garder que les entreprises récentes, <b>Taille</b> pour viser les structures sans salarié, petites (1 à 9) ou plus grosses (10 et plus).</li>
         <li>Clique sur <b>Lancer la recherche</b> et garde l'onglet ouvert. Compte environ 1 minute pour 300 entreprises, plus 1 à 5 minutes pour le complément OpenStreetMap.</li>
         <li>Clique sur <b>Télécharger en CSV</b> (ou <b>Copier le tableau</b>).</li>
+        <li>Pour refaire la même recherche plus tard : donne-lui un nom et clique sur <b>Enregistrer cette recherche</b>. Elle apparaît en haut dans « Mes recherches » (enregistrée dans ton navigateur, sur cet ordinateur). La page se rouvre aussi avec tes derniers choix.</li>
       </ol>
 
       <h3>2. Trouver les emails manquants (gratuit, dans Google Sheets)</h3>
@@ -159,6 +168,11 @@
     <h1>Recherche d'entreprises par département et métier</h1>
     <p>Interroge le registre officiel des entreprises (recherche-entreprises.api.gouv.fr) depuis ton navigateur. Établissements actifs, situés dans les départements choisis.</p>
 
+    <div class="mesRech" id="mesRech" hidden>
+      <span class="muted">Mes recherches :</span>
+      <span id="mesRechListe"></span>
+    </div>
+
     <label class="t" for="depSel">Départements</label>
     <div class="duo">
       <select id="depSel" aria-label="Choisir un département"><option value="">Choisir dans la liste…</option></select>
@@ -209,6 +223,11 @@
     </div>
 
     <div class="row"><button id="go">Lancer la recherche</button><span class="muted" id="estim"></span></div>
+    <div class="row enreg">
+      <input type="text" id="nomRech" placeholder="Nom de la recherche, ex. Boulangeries Nord-Isère" maxlength="50" autocomplete="off">
+      <button class="sec" id="saveRech">Enregistrer cette recherche</button>
+      <span class="muted" id="saveMsg"></span>
+    </div>
     <div class="bar"><div id="prog"></div></div>
     <div id="status"></div>
     <div id="log"></div>
@@ -603,7 +622,55 @@ $('rayon').addEventListener('input', render);
   $('nafSel').onchange = () => { const v = $('nafSel').value; if (v) ajouterNaf(v); $('nafSel').value = ''; render(); };
 })();
 
-render();
+// ===== Recherches enregistrées et mémoire des derniers choix (stockées dans ce navigateur) =====
+const CLE_RECH = 'outilProspection.recherches', CLE_DERNIER = 'outilProspection.dernier';
+const lireLS = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch (e) { return def; } };
+const ecrireLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* navigateur privé */ } };
+function etatActuel() {
+  return { deps: [...deps], villes: villes.map(v => ({ ...v })), rayon: +$('rayon').value, nafs: [...nafs],
+    ei: $('optEI').checked, sci: $('optSCI').checked, osm: $('optOSM').checked, age: $('optAge').value, taille: $('optTaille').value };
+}
+function appliquerEtat(e) {
+  if (!e) return;
+  deps = (e.deps || []).filter(d => DEPS[d]);
+  villes = (e.villes || []).filter(v => v && v.code);
+  nafs = (e.nafs || []).filter(c => NAFS[c]);
+  $('rayon').value = e.rayon || 0;
+  if (typeof e.ei === 'boolean') $('optEI').checked = e.ei;
+  if (typeof e.sci === 'boolean') $('optSCI').checked = e.sci;
+  if (typeof e.osm === 'boolean') $('optOSM').checked = e.osm;
+  $('optAge').value = e.age || '0'; $('optTaille').value = e.taille || '';
+  render();
+}
+function afficherMesRecherches() {
+  const liste = lireLS(CLE_RECH, []);
+  $('mesRech').hidden = !liste.length;
+  $('mesRechListe').innerHTML = '';
+  liste.forEach((r, i) => {
+    const b = document.createElement('span'); b.className = 'rech';
+    const ouvrir = document.createElement('button'); ouvrir.textContent = r.nom; ouvrir.title = 'Recharger cette recherche';
+    ouvrir.onclick = () => { appliquerEtat(r.etat); $('saveMsg').textContent = `« ${r.nom} » chargée : clique sur Lancer la recherche.`; };
+    const suppr = document.createElement('button'); suppr.className = 'suppr'; suppr.textContent = '×'; suppr.title = 'Supprimer';
+    suppr.onclick = () => { const l = lireLS(CLE_RECH, []); l.splice(i, 1); ecrireLS(CLE_RECH, l); afficherMesRecherches(); };
+    b.append(ouvrir, suppr); $('mesRechListe').appendChild(b);
+  });
+}
+$('saveRech').onclick = () => {
+  const nom = $('nomRech').value.trim();
+  if (!nom) { $('nomRech').focus(); $('saveMsg').textContent = 'Donne un nom à la recherche.'; return; }
+  if ((!deps.length && !villes.length) || !nafs.length) { $('saveMsg').textContent = 'Choisis d\'abord une zone et un métier.'; return; }
+  const l = lireLS(CLE_RECH, []).filter(r => r.nom !== nom);
+  l.push({ nom, etat: etatActuel() }); ecrireLS(CLE_RECH, l);
+  $('nomRech').value = ''; $('saveMsg').textContent = `« ${nom} » enregistrée.`; afficherMesRecherches();
+};
+$('nomRech').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('saveRech').click(); } });
+// Mémoire : sauvegarde des choix à chaque changement, rechargement à l'ouverture
+const renderOriginal = render;
+render = function () { renderOriginal(); ecrireLS(CLE_DERNIER, etatActuel()); };
+['optEI', 'optSCI', 'optOSM', 'optAge', 'optTaille'].forEach(id => $(id).addEventListener('change', () => ecrireLS(CLE_DERNIER, etatActuel())));
+afficherMesRecherches();
+const dernier = lireLS(CLE_DERNIER, null);
+if (dernier) appliquerEtat(dernier); else render();
 
 async function appel(url) {
   for (let essai = 0; essai < 6; essai++) {
