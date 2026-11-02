@@ -53,6 +53,10 @@
   .enreg { margin-top:10px; }
   .enreg input { flex:1 1 240px; min-width:0; padding:8px 10px; font-size:13px; }
   .enreg button { padding:8px 14px; font-size:13px; }
+  .connues { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; margin-top:12px; font-size:13px; }
+  label.bouton { display:inline-block; border:1px solid var(--accent); color:var(--accent); background:var(--card); border-radius:6px; padding:7px 12px; font-size:13px; font-weight:bold; cursor:pointer; }
+  label.bouton:focus-within, label.bouton:hover { background:var(--accent2); }
+  .badge { display:inline-block; margin-top:3px; padding:1px 7px; border-radius:10px; font-size:10px; font-weight:bold; background:#fde68a; color:#78350f; }
   .chips:empty { min-height:0; margin-top:0; }
   .rayonBox { margin-top:8px; padding:8px 14px 4px; border:1px solid var(--line); border-radius:8px; background:var(--accent2); }
   .rayonTete { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:13px; }
@@ -105,6 +109,7 @@
         <li><b>Zone</b> : choisis un ou plusieurs <b>départements</b> (menu ou saisie : « 38 », « Rhône ») et/ou des <b>villes</b> (« Bourgoin », « 38300 »). Fais glisser le curseur <b>Rayon</b> : à gauche la ville seule, puis de 2 à 50 km autour (le rayon s'applique à toutes les villes choisies).</li>
         <li><b>Métier</b> : tape ce que tu cherches dans la barre bleue (« boulangerie », « agence immobilière », « chauffagiste », ou un code comme « 43.22B »), décoche les codes inutiles, puis Entrée. Tu peux aussi passer par les boutons rapides ou la liste complète.</li>
         <li><b>Options</b> : pour l'immobilier, coche « Exclure les entreprises individuelles » (écarte les mandataires). Pour les artisans et commerçants, laisse-la décochée : beaucoup sont en entreprise individuelle.</li>
+        <li><b>Entreprises déjà connues</b> (facultatif) : clique sur <b>Charger une liste d'entreprises déjà connues</b> et choisis un fichier CSV ou Excel (tes partenaires, ta BDD, ton export Trello…). Il faut une colonne SIRET, ou une colonne nom (Agence, Entreprise…) avec une colonne Ville. Ces entreprises seront marquées « Déjà connue » dans les résultats et le fichier. La liste reste chargée jusqu'à ce que tu la vides.</li>
         <li><b>Filtres</b> (facultatif) : <b>Créée depuis</b> pour ne garder que les entreprises récentes, <b>Taille</b> pour viser les structures sans salarié, petites (1 à 9) ou plus grosses (10 et plus).</li>
         <li>Clique sur <b>Lancer la recherche</b> et garde l'onglet ouvert. Compte environ 1 minute pour 300 entreprises, plus 1 à 5 minutes pour le complément OpenStreetMap.</li>
         <li>Clique sur <b>Télécharger en CSV</b> (ou <b>Copier le tableau</b>).</li>
@@ -221,6 +226,12 @@
       <label>Taille
         <select id="optTaille"><option value="">Toutes les tailles</option><option value="0">Sans salarié</option><option value="1">1 à 9 salariés</option><option value="10">10 salariés et plus</option></select>
       </label>
+    </div>
+    <div class="connues">
+      <label class="sec bouton" for="fichierConnues">Charger une liste d'entreprises déjà connues (CSV ou Excel)</label>
+      <input type="file" id="fichierConnues" accept=".csv,.txt,.xlsx,.xls" hidden>
+      <span id="connuesEtat" class="muted">Partenaires, agences déjà démarchées… elles seront marquées « déjà connue » dans les résultats.</span>
+      <button class="sec petit" id="connuesVider" hidden>Vider la liste</button>
     </div>
 
     <div class="row"><button id="go">Lancer la recherche</button><span class="muted" id="estim"></span></div>
@@ -787,7 +798,7 @@ $('go').onclick = async () => {
             const gerant = d ? `${String(d.prenoms || '').split(' ')[0]} ${d.nom}`.trim() : '';
             const ligne = [e.siret, nom, (e.liste_enseignes || []).filter(Boolean).join(' / '), e.nom_commercial || '',
               e.activite_principale || naf, e.adresse || '', e.code_postal || '', e.libelle_commune || '', depDe(e),
-              gerant, d ? (d.qualite || '') : '', libelleEffectif(tr), creee, '', '', '', '', creee && creee >= unAn ? 'oui' : ''];
+              gerant, d ? (d.qualite || '') : '', libelleEffectif(tr), creee, '', '', '', '', creee && creee >= unAn ? 'oui' : '', ''];
             ligne.lat = +e.latitude || null; ligne.lon = +e.longitude || null;
             lignes.push(ligne);
           }
@@ -799,10 +810,12 @@ $('go').onclick = async () => {
       }
     }
     // 1) Le fichier est disponible tout de suite
+    const nbConnues = marquerConnues();
     genererSortie();
     const resume = `<span class="ok">${lignes.length} établissements</span> trouvés. Écartés : ${st.ei} entreprises individuelles, ${st.sci} SCI/copropriétés, ${st.hors} établissements hors zone, ${st.fermes} fermés, ${st.inexpl} inexploitables (données protégées, sans adresse ou autre activité)` +
       (st.age ? `, ${st.age} trop anciennes` : '') + (st.taille ? `, ${st.taille} hors taille choisie` : '') + '.' +
       (lignes.filter(r => r[17]).length ? `<br>Dont <b>${lignes.filter(r => r[17]).length} créées il y a moins d'un an</b> (colonne « recente_moins_1_an »).` : '') +
+      (nbConnues ? `<br><span class="warn"><b>${nbConnues} déjà connue(s)</b> d'après ta liste (colonne « deja_connue »).</span>` : '') +
       (st.plafond.length ? `<br><span class="warn">Attention : le registre limite chaque recherche à 10 000 sociétés. Résultat incomplet pour ${st.plafond.join(', ')}.</span>` : '');
     $('resume').innerHTML = resume;
     $('result').hidden = false;
@@ -827,7 +840,7 @@ $('go').onclick = async () => {
 
 function genererSortie() {
   const entete = ['siret', 'nom_complet', 'enseignes', 'nom_commercial', 'naf', 'adresse', 'code_postal', 'ville', 'departement', 'gerant', 'qualite',
-    'effectif', 'date_creation', 'telephone', 'site_web', 'email', 'source_contact', 'recente_moins_1_an'];
+    'effectif', 'date_creation', 'telephone', 'site_web', 'email', 'source_contact', 'recente_moins_1_an', 'deja_connue'];
   const propre = v => String(v == null ? '' : v).replace(/[\t\r\n]+/g, ' ').trim();
   $('out').value = [entete, ...lignes].map(r => r.map(propre).join('\t')).join('\n');
   afficherTableau();
@@ -854,7 +867,7 @@ function afficherTableau() {
     if (r[9] && !email) liens.push(`<a href="https://www.linkedin.com/search/results/people/?keywords=${enc(r[9] + ' ' + nom.replace(/\b(SARL|SAS|SASU|EURL|SA)\b/gi, ''))}" target="_blank" rel="noopener">LinkedIn</a>`);
     const siteUrl = site && (site.startsWith('http') ? site : 'https://' + site);
     return `<tr>
-      <td class="nom">${esc(nom)}${nom !== r[1] ? `<small>${esc(r[1])}</small>` : ''}<small>${esc(ville)} · ${esc(r[4])}</small></td>
+      <td class="nom">${esc(nom)}${nom !== r[1] ? `<small>${esc(r[1])}</small>` : ''}<small>${esc(ville)} · ${esc(r[4])}</small>${r[18] ? `<span class="badge" title="${esc(r[18])}">Déjà connue</span>` : ''}</td>
       <td><div class="actions">${liens.join('') || '<span class="vide">complet</span>'}</div></td>
       <td>${tel ? `<a href="tel:${esc(tel.replace(/\s/g, ''))}">${esc(tel)}</a>` : '<span class="vide">–</span>'}</td>
       <td>${email ? esc(email) : '<span class="vide">–</span>'}</td>
@@ -950,6 +963,98 @@ async function completerOSM(lignes) {
   }
   return n;
 }
+
+// ===== Liste d'entreprises déjà connues (partenaires, déjà démarchées…) =====
+const CLE_CONNUES = 'outilProspection.connues';
+let connues = lireLS(CLE_CONNUES, null);   // { fichier, sirets: [], noms: [{ mots, ville }] }
+function afficherConnues() {
+  $('connuesVider').hidden = !connues;
+  $('connuesEtat').innerHTML = connues
+    ? `Liste chargée : <b>${connues.fichier}</b> (${connues.sirets.length + connues.noms.length} entreprises). Elles seront marquées « déjà connue ».`
+    : 'Partenaires, agences déjà démarchées… elles seront marquées « déjà connue » dans les résultats.';
+}
+/** Marque les résultats présents dans la liste : par SIRET, sinon par nom (mot distinctif commun) + même ville. */
+function marquerConnues() {
+  if (!connues) { lignes.forEach(r => r[18] = ''); return 0; }
+  const sirets = new Set(connues.sirets);
+  const parVille = {};
+  connues.noms.forEach(c => (parVille[c.ville] = parVille[c.ville] || []).push(c));
+  let n = 0;
+  lignes.forEach(r => {
+    let ok = sirets.has(String(r[0]));
+    if (!ok) {
+      const mots = new Set(motsNom(`${r[1]} ${r[2]} ${r[3]}`));
+      ok = (parVille[norm(r[7]).replace(/[^a-z0-9]+/g, ' ').trim()] || []).some(c => c.mots.some(w => mots.has(w)));
+    }
+    r[18] = ok ? `oui (${connues.fichier})` : '';
+    if (ok) n++;
+  });
+  return n;
+}
+function lireCSV(texte) {
+  const premiere = texte.split(/\r?\n/)[0];
+  const sep = [';', '\t', ','].sort((a, b) => premiere.split(b).length - premiere.split(a).length)[0];
+  const lignesCsv = []; let champ = '', ligne = [], guill = false;
+  for (let i = 0; i < texte.length; i++) {
+    const ch = texte[i];
+    if (guill) { if (ch === '"' && texte[i + 1] === '"') { champ += '"'; i++; } else if (ch === '"') guill = false; else champ += ch; }
+    else if (ch === '"') guill = true;
+    else if (ch === sep) { ligne.push(champ); champ = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && texte[i + 1] === '\n') i++; ligne.push(champ); lignesCsv.push(ligne); ligne = []; champ = ''; }
+    else champ += ch;
+  }
+  if (champ || ligne.length) { ligne.push(champ); lignesCsv.push(ligne); }
+  return lignesCsv.filter(l => l.some(c => String(c).trim()));
+}
+async function lireExcel(fichier) {
+  if (!window.XLSX) await new Promise((ok, ko) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload = ok; sc.onerror = ko; document.head.appendChild(sc);
+  });
+  const wb = XLSX.read(await fichier.arrayBuffer(), { type: 'array' });
+  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+}
+/** Trouve la ligne d'en-têtes et les colonnes SIRET / nom / ville, puis construit la liste. */
+function construireConnues(tableau, fichier) {
+  const n = v => norm(v).replace(/[^a-z0-9]+/g, ' ').trim();
+  const iEnt = tableau.slice(0, 10).findIndex(l => l.map(n).some(h => /^(siret|siren|nom|agence|entreprise|raison sociale|nom complet|nom_complet|societe|enseigne)$/.test(h)));
+  if (iEnt < 0) throw new Error('aucune colonne « SIRET », « Nom », « Agence » ou « Entreprise » trouvée dans les 10 premières lignes');
+  const h = tableau[iEnt].map(n);
+  const col = (...noms) => h.findIndex(x => noms.includes(x));
+  const cSiret = col('siret'), cNoms = h.map((x, i) => /^(nom|agence|entreprise|raison sociale|nom complet|nom commercial|societe|enseigne|enseignes|enseigne reseau)$/.test(x) ? i : -1).filter(i => i >= 0);
+  const cVille = col('ville', 'commune', 'localite');
+  const res = { fichier, sirets: [], noms: [] };
+  tableau.slice(iEnt + 1).forEach(l => {
+    const siret = cSiret >= 0 ? String(l[cSiret] || '').replace(/\D/g, '') : '';
+    if (siret.length >= 13) res.sirets.push(siret.padStart(14, '0'));
+    else if (cNoms.length && cVille >= 0) {
+      const mots = motsNom(cNoms.map(i => l[i]).join(' '));
+      const ville = n(l[cVille]);
+      if (mots.length && ville) res.noms.push({ mots, ville });
+    }
+  });
+  if (!res.sirets.length && !res.noms.length) throw new Error('aucune entreprise exploitable (il faut un SIRET, ou un nom et une ville)');
+  return res;
+}
+$('fichierConnues').onchange = async ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  $('connuesEtat').textContent = 'Lecture du fichier…';
+  try {
+    const tableau = /\.xlsx?$/i.test(f.name) ? await lireExcel(f) : lireCSV(await f.text());
+    connues = construireConnues(tableau, f.name.replace(/\.[^.]+$/, ''));
+    ecrireLS(CLE_CONNUES, connues);
+    afficherConnues();
+    if (lignes.length) { const nb = marquerConnues(); genererSortie(); $('connuesEtat').innerHTML += ` <b>${nb}</b> trouvée(s) dans les résultats actuels.`; }
+  } catch (e) {
+    $('connuesEtat').innerHTML = `<span class="err">Fichier non reconnu : ${e.message}.</span>`;
+  }
+  ev.target.value = '';
+};
+$('connuesVider').onclick = () => {
+  connues = null; try { localStorage.removeItem(CLE_CONNUES); } catch (e) { /* */ }
+  afficherConnues(); if (lignes.length) { marquerConnues(); genererSortie(); }
+};
+afficherConnues();
 
 // Script Apps Script d'enrichissement, intégré à la page
 $('copyGs').onclick = async () => {
