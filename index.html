@@ -64,6 +64,13 @@
   .legende { display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:8px; font-size:12px; align-items:center; }
   .legende i { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:5px; vertical-align:-1px; border:1px solid rgba(0,0,0,.25); }
   .popup b { font-size:13px; } .popup div { margin-top:3px; font-size:12px; } .popup .actions { margin-top:6px; }
+  .barreTab { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; margin-top:12px; font-size:13px; }
+  .barreTab input[type=search] { flex:1 1 200px; min-width:0; padding:7px 10px; font-size:13px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--txt); }
+  .barreTab select { width:auto; padding:6px 8px; font-size:13px; }
+  .saisie { width:150px; padding:4px 6px; font-size:12px; border:1px solid transparent; border-radius:4px; background:transparent; color:var(--txt); }
+  .saisie:hover { border-color:var(--line); } .saisie:focus { border-color:var(--accent); background:var(--card); outline:none; }
+  .saisie.email { width:190px; } .saisie.manuel { background:#fef9c3; color:#713f12; }
+  .cellTel { display:flex; align-items:center; gap:2px; } .cellTel a { font-size:12px; text-decoration:none; }
   .chips:empty { min-height:0; margin-top:0; }
   .rayonBox { margin-top:8px; padding:8px 14px 4px; border:1px solid var(--line); border-radius:8px; background:var(--accent2); }
   .rayonTete { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:13px; }
@@ -120,6 +127,7 @@
         <li><b>Filtres</b> (facultatif) : <b>Créée depuis</b> pour ne garder que les entreprises récentes, <b>Taille</b> pour viser les structures sans salarié, petites (1 à 9) ou plus grosses (10 et plus).</li>
         <li>Clique sur <b>Lancer la recherche</b> et garde l'onglet ouvert. Compte environ 1 minute pour 300 entreprises, plus 1 à 5 minutes pour le complément OpenStreetMap.</li>
         <li>Clique sur <b>Télécharger en CSV</b> (ou <b>Copier le tableau</b>).</li>
+        <li>Dans le <b>tableau</b> : recherche rapide, filtres (avec téléphone, sans email, récentes, masquer les déjà connues) et tri. Tu peux taper un téléphone ou un email trouvé à la main directement dans sa case (fond jaune) : il est repris dans le CSV. Coche « Seulement les lignes affichées » pour n'exporter que ta sélection.</li>
         <li>Onglet <b>Carte</b> : chaque entreprise en point (vert = téléphone et email, orange = il en manque un, gris = rien, jaune = déjà connue), avec le cercle du rayon. Clique sur un point pour voir ses coordonnées.</li>
         <li>Pour refaire la même recherche plus tard : donne-lui un nom et clique sur <b>Enregistrer cette recherche</b>. Elle apparaît en haut dans « Mes recherches » (enregistrée dans ton navigateur, sur cet ordinateur). La page se rouvre aussi avec tes derniers choix.</li>
         <li>Pour donner la même recherche à un collègue : clique sur <b>Copier le lien à partager</b> et envoie-le-lui. En l'ouvrant, l'outil se préremplit avec tes critères ; il n'a plus qu'à lancer.</li>
@@ -257,7 +265,8 @@
   <div class="card" id="result" hidden>
     <h1>Résultat</h1>
     <p id="resume"></p>
-    <div class="row"><button id="copy">Copier le tableau</button><button class="sec" id="dl">Télécharger en CSV</button></div>
+    <div class="row"><button id="copy">Copier le tableau</button><button class="sec" id="dl">Télécharger en CSV</button>
+      <label class="muted" style="font-size:13px"><input type="checkbox" id="exportFiltre"> Seulement les lignes affichées (filtres du tableau)</label></div>
     <div class="osmBox" id="osmBox" hidden><span id="osmEtat"></span> <button class="sec petit" id="osmStop">Arrêter le complément</button></div>
     <p style="margin-top:12px">Pour trouver les emails manquants, suis l'étape 2 du <a href="#aide" onclick="document.getElementById('aide').open=true">mode d'emploi</a>.</p>
     <div class="onglets" role="tablist">
@@ -265,6 +274,14 @@
       <button role="tab" id="ongCarte" aria-selected="false">Carte</button>
     </div>
     <div id="vueTableau">
+      <div class="barreTab">
+        <input type="search" id="tFiltre" placeholder="Rechercher un nom, une ville…" autocomplete="off">
+        <label><input type="checkbox" id="fTel"> Avec téléphone</label>
+        <label><input type="checkbox" id="fSansEmail"> Sans email</label>
+        <label><input type="checkbox" id="fRecent"> Récentes</label>
+        <label><input type="checkbox" id="fMasquer"> Masquer les déjà connues</label>
+        <select id="tTri" aria-label="Trier"><option value="">Ordre du registre</option><option value="ville">Trier par ville</option><option value="nom">Trier par nom</option><option value="date">Plus récentes d'abord</option></select>
+      </div>
       <div class="tableau"><table class="apercu" id="apercu"></table></div>
       <div class="pagin"><span id="paginInfo"></span><span><button class="sec petit" id="pagePrec">‹ Précédent</button> <button class="sec petit" id="pageSuiv">Suivant ›</button></span></div>
     </div>
@@ -860,12 +877,34 @@ $('go').onclick = async () => {
   $('go').disabled = false;
 };
 
+let ENTETE_CSV = [];
+function construireCSV() {
+  const propre = v => String(v == null ? '' : v).replace(/[\t\r\n]+/g, ' ').trim();
+  const src = $('exportFiltre').checked ? vueLignes() : lignes;
+  $('out').value = [ENTETE_CSV, ...src].map(r => r.slice(0, ENTETE_CSV.length).map(propre).join('\t')).join('\n');
+}
+/** Lignes affichées dans le tableau : recherche rapide, filtres et tri. */
+function vueLignes() {
+  const q = norm($('tFiltre').value.trim());
+  let v = lignes.filter(r =>
+    (!q || norm(`${r[1]} ${r[2]} ${r[3]} ${r[7]} ${r[9]}`).includes(q)) &&
+    (!$('fTel').checked || r[13]) && (!$('fSansEmail').checked || !r[15]) &&
+    (!$('fRecent').checked || r[17]) && (!$('fMasquer').checked || !r[18]));
+  const tri = $('tTri').value;
+  const nomDe = r => norm(r[3] || r[2] || r[1]);
+  if (tri === 'ville') v = v.slice().sort((a, b) => norm(a[7]).localeCompare(norm(b[7])) || nomDe(a).localeCompare(nomDe(b)));
+  else if (tri === 'nom') v = v.slice().sort((a, b) => nomDe(a).localeCompare(nomDe(b)));
+  else if (tri === 'date') v = v.slice().sort((a, b) => String(b[12]).localeCompare(String(a[12])));
+  return v;
+}
+
 function genererSortie() {
   const entete = ['siret', 'nom_complet', 'enseignes', 'nom_commercial', 'naf', 'adresse', 'code_postal', 'ville', 'departement', 'gerant', 'qualite',
     'effectif', 'date_creation', 'telephone', 'site_web', 'email', 'source_contact', 'recente_moins_1_an', 'deja_connue'];
-  const propre = v => String(v == null ? '' : v).replace(/[\t\r\n]+/g, ' ').trim();
-  $('out').value = [entete, ...lignes].map(r => r.map(propre).join('\t')).join('\n');
-  afficherTableau();
+  ENTETE_CSV = entete;
+  construireCSV();
+  // pas de rafraîchissement pendant une saisie dans le tableau (sinon le curseur saute)
+  if (!(document.activeElement && document.activeElement.classList.contains('saisie'))) afficherTableau();
   if (!$('vueCarte').hidden) afficherCarte();
 }
 
@@ -875,9 +914,10 @@ let page = 0;
 function afficherTableau() {
   const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const enc = encodeURIComponent;
-  const nbPages = Math.max(1, Math.ceil(lignes.length / PAR_PAGE));
+  const vue = vueLignes();
+  const nbPages = Math.max(1, Math.ceil(vue.length / PAR_PAGE));
   page = Math.min(page, nbPages - 1);
-  const lot = lignes.slice(page * PAR_PAGE, (page + 1) * PAR_PAGE);
+  const lot = vue.slice(page * PAR_PAGE, (page + 1) * PAR_PAGE);
   const rows = lot.map(r => {
     const nom = r[3] || r[2].split(' / ')[0] || r[1];
     const ville = r[7], tel = r[13], site = r[14], email = r[15];
@@ -892,15 +932,25 @@ function afficherTableau() {
     return `<tr>
       <td class="nom">${esc(nom)}${nom !== r[1] ? `<small>${esc(r[1])}</small>` : ''}<small>${esc(ville)} · ${esc(r[4])}</small>${r[18] ? `<span class="badge" title="${esc(r[18])}">Déjà connue</span>` : ''}</td>
       <td><div class="actions">${liens.join('') || '<span class="vide">complet</span>'}</div></td>
-      <td>${tel ? `<a href="tel:${esc(tel.replace(/\s/g, ''))}">${esc(tel)}</a>` : '<span class="vide">–</span>'}</td>
-      <td>${email ? esc(email) : '<span class="vide">–</span>'}</td>
+      <td><div class="cellTel"><input class="saisie${r.manuelTel ? ' manuel' : ''}" data-i="${lignes.indexOf(r)}" data-c="13" value="${esc(tel)}" placeholder="+ téléphone" aria-label="Téléphone">${tel ? `<a href="tel:${esc(tel.replace(/\s/g, ''))}" title="Appeler">📞</a>` : ''}</div></td>
+      <td><input class="saisie email${r.manuelEmail ? ' manuel' : ''}" data-i="${lignes.indexOf(r)}" data-c="15" value="${esc(email)}" placeholder="+ email" aria-label="Email"></td>
       <td>${site ? `<a href="${esc(siteUrl)}" target="_blank" rel="noopener">${esc(site.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').slice(0, 30))}</a>` : '<span class="vide">–</span>'}</td>
       <td>${esc(r[9]) || '<span class="vide">–</span>'}</td>
     </tr>`;
   }).join('');
   $('apercu').innerHTML = '<tr>' + ['Entreprise', 'Compléter', 'Téléphone', 'Email', 'Site', 'Gérant'].map(h => `<th>${h}</th>`).join('') + '</tr>' + rows;
   const complets = lignes.filter(r => r[13] && r[15]).length;
-  $('paginInfo').textContent = lignes.length ? `${page * PAR_PAGE + 1}–${Math.min((page + 1) * PAR_PAGE, lignes.length)} sur ${lignes.length} · ${lignes.filter(r => r[13]).length} avec téléphone · ${lignes.filter(r => r[15]).length} avec email · ${complets} complets` : '';
+  $('paginInfo').textContent = vue.length ? `${page * PAR_PAGE + 1}–${Math.min((page + 1) * PAR_PAGE, vue.length)} sur ${vue.length}${vue.length !== lignes.length ? ` (filtré sur ${lignes.length})` : ''} · ${lignes.filter(r => r[13]).length} avec téléphone · ${lignes.filter(r => r[15]).length} avec email · ${complets} complets`
+    : (lignes.length ? 'Aucune ligne ne correspond aux filtres.' : '');
+  // Saisie manuelle d'un téléphone ou d'un email : reprise dans le CSV
+  $('apercu').querySelectorAll('input.saisie').forEach(inp => inp.onchange = () => {
+    const r = lignes[+inp.dataset.i], c = +inp.dataset.c, v = inp.value.trim();
+    r[c] = c === 13 ? telFr(v) : v.toLowerCase();
+    if (c === 13) r.manuelTel = !!v; else r.manuelEmail = !!v;
+    if (v && !/saisie manuelle/.test(r[16])) r[16] = (r[16] ? r[16] + ' + ' : '') + 'saisie manuelle';
+    inp.classList.toggle('manuel', !!v); if (c === 13) inp.value = r[c];
+    construireCSV();
+  });
   $('pagePrec').disabled = page === 0; $('pageSuiv').disabled = page >= nbPages - 1;
 }
 // ===== Carte des résultats (Leaflet + fond OpenStreetMap, chargés à la première ouverture) =====
@@ -956,6 +1006,11 @@ function ouvrirOnglet(carteVisible) {
 }
 $('ongTableau').onclick = () => ouvrirOnglet(false);
 $('ongCarte').onclick = () => ouvrirOnglet(true);
+
+['tFiltre', 'fTel', 'fSansEmail', 'fRecent', 'fMasquer', 'tTri'].forEach(id => $(id).addEventListener(id === 'tFiltre' ? 'input' : 'change', () => {
+  page = 0; afficherTableau(); if ($('exportFiltre').checked) construireCSV();
+}));
+$('exportFiltre').addEventListener('change', construireCSV);
 
 $('pagePrec').onclick = () => { page--; afficherTableau(); };
 $('pageSuiv').onclick = () => { page++; afficherTableau(); };
