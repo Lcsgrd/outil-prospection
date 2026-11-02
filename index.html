@@ -74,8 +74,17 @@
   .aide .alerte { border-left:4px solid var(--warn); background:var(--accent2); padding:10px 12px; border-radius:4px; margin-top:8px; font-size:14px; }
   textarea { width:100%; height:120px; margin-top:10px; font-family:Consolas, monospace; font-size:11px; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:6px; }
   .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; align-items:center; }
-  table.apercu { width:100%; border-collapse:collapse; font-size:12px; margin-top:12px; display:block; overflow-x:auto; }
-  table.apercu th, table.apercu td { border-bottom:1px solid var(--line); padding:5px 8px; text-align:left; white-space:nowrap; }
+  .tableau { overflow-x:auto; margin-top:12px; border:1px solid var(--line); border-radius:8px; }
+  table.apercu { width:100%; border-collapse:collapse; font-size:12px; }
+  table.apercu th, table.apercu td { border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; white-space:nowrap; vertical-align:middle; }
+  table.apercu th { position:sticky; top:0; background:var(--accent2); font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
+  table.apercu td.nom { white-space:normal; min-width:180px; max-width:260px; }
+  table.apercu td.nom small { display:block; color:var(--muted); font-size:11px; }
+  table.apercu a { color:var(--accent); text-decoration:none; } table.apercu a:hover { text-decoration:underline; }
+  .vide { color:var(--muted); }
+  .actions { display:flex; gap:4px; }
+  .actions a { border:1px solid var(--line); border-radius:4px; padding:2px 6px; font-size:11px; background:var(--card); }
+  .pagin { display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -211,8 +220,9 @@
     <div class="row"><button id="copy">Copier le tableau</button><button class="sec" id="dl">Télécharger en CSV</button></div>
     <div class="osmBox" id="osmBox" hidden><span id="osmEtat"></span> <button class="sec petit" id="osmStop">Arrêter le complément</button></div>
     <p style="margin-top:12px">Pour trouver les emails manquants, suis l'étape 2 du <a href="#aide" onclick="document.getElementById('aide').open=true">mode d'emploi</a>.</p>
-    <table class="apercu" id="apercu"></table>
-    <textarea id="out" readonly></textarea>
+    <div class="tableau"><table class="apercu" id="apercu"></table></div>
+    <div class="pagin"><span id="paginInfo"></span><span><button class="sec petit" id="pagePrec">‹ Précédent</button> <button class="sec petit" id="pageSuiv">Suivant ›</button></span></div>
+    <textarea id="out" readonly hidden></textarea>
   </div>
   <footer class="signature">By <b>LcsGrd</b></footer>
 </main>
@@ -636,7 +646,7 @@ const HORS_CIBLE = /(^|[^a-z])(sci|scpi|sccv|gfa|asl|aful)([^a-z]|$)|societe civ
 let lignes = [];
 $('go').onclick = async () => {
   if ((!deps.length && !villes.length) || !nafs.length) { $('status').innerHTML = '<span class="err">Choisis au moins un département ou une ville, et un code APE.</span>'; return; }
-  $('go').disabled = true; lignes = []; $('osmBox').hidden = true; $('osmStop').hidden = false; $('log').textContent = ''; $('result').hidden = true; $('prog').style.width = '0';
+  $('go').disabled = true; lignes = []; page = 0; $('osmBox').hidden = true; $('osmStop').hidden = false; $('log').textContent = ''; $('result').hidden = true; $('prog').style.width = '0';
   const vus = new Set(); const st = { ei: 0, hors: 0, fermes: 0, sci: 0, inexpl: 0, plafond: [] };
   const exEI = $('optEI').checked, exSCI = $('optSCI').checked;
   const moisMax = +$('optAge').value, taille = $('optTaille').value;
@@ -732,9 +742,45 @@ function genererSortie() {
     'effectif', 'date_creation', 'telephone', 'site_web', 'email', 'source_contact', 'recente_moins_1_an'];
   const propre = v => String(v == null ? '' : v).replace(/[\t\r\n]+/g, ' ').trim();
   $('out').value = [entete, ...lignes].map(r => r.map(propre).join('\t')).join('\n');
-  $('apercu').innerHTML = '<tr>' + ['SIRET', 'Nom', 'Enseigne', 'APE', 'Ville', 'Gérant', 'Téléphone', 'Site', 'Email'].map(h => `<th>${h}</th>`).join('') + '</tr>' +
-    lignes.slice(0, 10).map(r => '<tr>' + [r[0], r[1], r[2], r[4], r[7], r[9], r[13], r[14], r[15]].map(v => `<td>${propre(v).replace(/</g, '&lt;')}</td>`).join('') + '</tr>').join('');
+  afficherTableau();
 }
+
+// ===== Tableau des résultats, avec liens de recherche rapide pour compléter à la main =====
+const PAR_PAGE = 50;
+let page = 0;
+function afficherTableau() {
+  const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const enc = encodeURIComponent;
+  const nbPages = Math.max(1, Math.ceil(lignes.length / PAR_PAGE));
+  page = Math.min(page, nbPages - 1);
+  const lot = lignes.slice(page * PAR_PAGE, (page + 1) * PAR_PAGE);
+  const rows = lot.map(r => {
+    const nom = r[3] || r[2].split(' / ')[0] || r[1];
+    const ville = r[7], tel = r[13], site = r[14], email = r[15];
+    const qui = `${nom} ${ville}`;
+    const liens = [];
+    if (!tel || !email) {
+      liens.push(`<a href="https://www.google.com/search?q=${enc(qui + ' téléphone email')}" target="_blank" rel="noopener">Google</a>`);
+      liens.push(`<a href="https://www.pagesjaunes.fr/annuaire/chercherlespros?quoiqui=${enc(nom)}&ou=${enc(ville)}" target="_blank" rel="noopener">Pages Jaunes</a>`);
+    }
+    if (r[9] && !email) liens.push(`<a href="https://www.linkedin.com/search/results/people/?keywords=${enc(r[9] + ' ' + nom.replace(/\b(SARL|SAS|SASU|EURL|SA)\b/gi, ''))}" target="_blank" rel="noopener">LinkedIn</a>`);
+    const siteUrl = site && (site.startsWith('http') ? site : 'https://' + site);
+    return `<tr>
+      <td class="nom">${esc(nom)}${nom !== r[1] ? `<small>${esc(r[1])}</small>` : ''}<small>${esc(ville)} · ${esc(r[4])}</small></td>
+      <td><div class="actions">${liens.join('') || '<span class="vide">complet</span>'}</div></td>
+      <td>${tel ? `<a href="tel:${esc(tel.replace(/\s/g, ''))}">${esc(tel)}</a>` : '<span class="vide">–</span>'}</td>
+      <td>${email ? esc(email) : '<span class="vide">–</span>'}</td>
+      <td>${site ? `<a href="${esc(siteUrl)}" target="_blank" rel="noopener">${esc(site.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').slice(0, 30))}</a>` : '<span class="vide">–</span>'}</td>
+      <td>${esc(r[9]) || '<span class="vide">–</span>'}</td>
+    </tr>`;
+  }).join('');
+  $('apercu').innerHTML = '<tr>' + ['Entreprise', 'Compléter', 'Téléphone', 'Email', 'Site', 'Gérant'].map(h => `<th>${h}</th>`).join('') + '</tr>' + rows;
+  const complets = lignes.filter(r => r[13] && r[15]).length;
+  $('paginInfo').textContent = lignes.length ? `${page * PAR_PAGE + 1}–${Math.min((page + 1) * PAR_PAGE, lignes.length)} sur ${lignes.length} · ${lignes.filter(r => r[13]).length} avec téléphone · ${lignes.filter(r => r[15]).length} avec email · ${complets} complets` : '';
+  $('pagePrec').disabled = page === 0; $('pageSuiv').disabled = page >= nbPages - 1;
+}
+$('pagePrec').onclick = () => { page--; afficherTableau(); };
+$('pageSuiv').onclick = () => { page++; afficherTableau(); };
 
 // ===== Complément gratuit : OpenStreetMap (Overpass) =====
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
@@ -834,7 +880,7 @@ $('osmStop').onclick = () => { osmStop = true; $('osmStop').hidden = true; $('os
 
 $('copy').onclick = async () => {
   try { await navigator.clipboard.writeText($('out').value); }
-  catch (e) { $('out').select(); document.execCommand('copy'); }
+  catch (e) { const t = document.createElement('textarea'); t.value = $('out').value; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
   $('copy').textContent = 'Copié ✓'; setTimeout(() => $('copy').textContent = 'Copier le tableau', 2000);
 };
 $('dl').onclick = () => {
