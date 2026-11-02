@@ -40,6 +40,8 @@
   .bar > div { height:100%; width:0; background:var(--accent); transition:width .2s; }
   #log { font-family:Consolas, monospace; font-size:12px; color:var(--muted); white-space:pre-wrap; max-height:170px; overflow:auto; }
   .ok { color:var(--ok); font-weight:bold; } .err { color:var(--err); font-weight:bold; } .warn { color:var(--warn); }
+  .osmBox { margin-top:12px; padding:10px 12px; border-radius:8px; background:var(--accent2); font-size:13px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  button.petit { padding:5px 10px; font-size:12px; }
   .chips:empty { min-height:0; margin-top:0; }
   .rayonBox { margin-top:8px; padding:8px 14px 4px; border:1px solid var(--line); border-radius:8px; background:var(--accent2); }
   .rayonTete { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:13px; }
@@ -195,6 +197,7 @@
     <h1>Résultat</h1>
     <p id="resume"></p>
     <div class="row"><button id="copy">Copier le tableau</button><button class="sec" id="dl">Télécharger en CSV</button></div>
+    <div class="osmBox" id="osmBox" hidden><span id="osmEtat"></span> <button class="sec petit" id="osmStop">Arrêter le complément</button></div>
     <p style="margin-top:12px">Pour trouver les emails manquants, suis l'étape 2 du <a href="#aide" onclick="document.getElementById('aide').open=true">mode d'emploi</a>.</p>
     <table class="apercu" id="apercu"></table>
     <textarea id="out" readonly></textarea>
@@ -449,7 +452,7 @@ document.querySelectorAll('.quick button[data-deps]').forEach(b => b.onclick = (
 const MOTS_VIDES = ['de', 'des', 'du', 'la', 'le', 'les', 'et', 'en', 'd', 'l', 'a', 'au', 'aux', 'pour', 'sur', 'un', 'une'];
 // Mots du quotidien → codes APE (le vocabulaire officiel est parfois différent : "chauffagiste" n'y figure pas)
 const SYNONYMES = {
-  'agence immobiliere': ['68.31Z', '68.32A'], 'agence immo': ['68.31Z', '68.32A'], 'immobilier': ['68.10Z', '68.20A', '68.20B', '68.31Z', '68.32A', '68.32B'],
+  'agence immobiliere': ['68.31Z', '68.32A'], 'agence immo': ['68.31Z', '68.32A'], 'immobilier': ['68.10Z', '68.31Z', '68.32A', '68.32B'],
   'gestion locative': ['68.32A'], 'syndic': ['68.32A'], 'marchand de biens': ['68.10Z'], 'promoteur': ['41.10A', '41.10B', '41.10C', '41.10D'],
   'chauffagiste': ['43.22B'], 'chauffage': ['43.22B'], 'climatisation': ['43.22B'], 'pompe a chaleur': ['43.22B'],
   'plombier': ['43.22A'], 'plomberie': ['43.22A'], 'electricien': ['43.21A'], 'macon': ['43.99C'], 'maconnerie': ['43.99C'],
@@ -483,15 +486,19 @@ function rechercheCodes(q) {
   if (!mots.length) return [];
   const qn = mots.join(' ');
   const res = new Set();
+  let exact = false;
   Object.entries(SYNONYMES).forEach(([k, cs]) => {
     const kn = motsDe(k).join(' ');
+    if (kn === qn) exact = true;
     if (kn === qn || (' ' + qn + ' ').includes(' ' + kn + ' ') || (mots.length === 1 && kn.startsWith(qn) && qn.length >= 4)) cs.forEach(c => res.add(c));
   });
   Object.entries(METIERS).forEach(([nom, cs]) => {
     const mn = motsDe(nom);
     if (mots.every(w => mn.some(x => x.startsWith(w)))) cs.forEach(c => res.add(c));
   });
-  Object.entries(LIBELLES).forEach(([c, lm]) => {
+  // Mot du quotidien reconnu exactement (« immobilier », « boulangerie »…) : on s'en tient à sa liste choisie,
+  // sans ajouter tous les libellés officiels qui contiennent le mot (ex. location de terrains pour « immobilier »)
+  if (!exact) Object.entries(LIBELLES).forEach(([c, lm]) => {
     if (mots.every(w => w.length >= 3 && lm.some(x => x.startsWith(w)))) res.add(c);
   });
   return [...res].filter(c => NAFS[c]).sort();
@@ -613,7 +620,7 @@ const HORS_CIBLE = /(^|[^a-z])(sci|scpi|sccv|gfa|asl|aful)([^a-z]|$)|societe civ
 let lignes = [];
 $('go').onclick = async () => {
   if ((!deps.length && !villes.length) || !nafs.length) { $('status').innerHTML = '<span class="err">Choisis au moins un département ou une ville, et un code APE.</span>'; return; }
-  $('go').disabled = true; lignes = []; $('log').textContent = ''; $('result').hidden = true; $('prog').style.width = '0';
+  $('go').disabled = true; lignes = []; $('osmBox').hidden = true; $('osmStop').hidden = false; $('log').textContent = ''; $('result').hidden = true; $('prog').style.width = '0';
   const vus = new Set(); const st = { ei: 0, hors: 0, fermes: 0, sci: 0, inexpl: 0, plafond: [] };
   const exEI = $('optEI').checked, exSCI = $('optSCI').checked;
   try {
@@ -666,17 +673,25 @@ $('go').onclick = async () => {
         await sleep(160);   // l'API accepte 7 appels / seconde
       }
     }
-    let osm = '';
-    if ($('optOSM').checked && lignes.length) {
-      const n = await completerOSM(lignes);
-      osm = `<br>OpenStreetMap : <b>${n.tel}</b> téléphones, <b>${n.site}</b> sites web et <b>${n.email}</b> emails trouvés sur ${lignes.length} établissements. ` +
-        `Pour chercher les emails sur les sites web, lance <b>chercherEmailsSurSites</b> dans le Google Sheet.`;
-    }
+    // 1) Le fichier est disponible tout de suite
     genererSortie();
-    $('resume').innerHTML = `<span class="ok">${lignes.length} établissements</span> trouvés. Écartés : ${st.ei} entreprises individuelles, ${st.sci} SCI/copropriétés, ${st.hors} établissements hors zone, ${st.fermes} fermés, ${st.inexpl} inexploitables (données protégées, sans adresse ou autre activité).` +
-      (st.plafond.length ? `<br><span class="warn">Attention : le registre limite chaque recherche à 10 000 sociétés. Résultat incomplet pour ${st.plafond.join(', ')}.</span>` : '') + osm;
-    $('status').innerHTML = '<span class="ok">Terminé.</span>';
+    const resume = `<span class="ok">${lignes.length} établissements</span> trouvés. Écartés : ${st.ei} entreprises individuelles, ${st.sci} SCI/copropriétés, ${st.hors} établissements hors zone, ${st.fermes} fermés, ${st.inexpl} inexploitables (données protégées, sans adresse ou autre activité).` +
+      (st.plafond.length ? `<br><span class="warn">Attention : le registre limite chaque recherche à 10 000 sociétés. Résultat incomplet pour ${st.plafond.join(', ')}.</span>` : '');
+    $('resume').innerHTML = resume;
     $('result').hidden = false;
+    $('status').innerHTML = '<span class="ok">Fichier prêt.</span>';
+    // 2) Complément OpenStreetMap en arrière-plan : le fichier se met à jour au fur et à mesure, on peut l'arrêter
+    if ($('optOSM').checked && lignes.length) {
+      $('osmBox').hidden = false; osmStop = false;
+      $('osmEtat').textContent = 'Complément OpenStreetMap en cours… Tu peux déjà télécharger le fichier : il se complète au fur et à mesure.';
+      const n = await completerOSM(lignes);
+      genererSortie();
+      $('osmEtat').innerHTML = `${osmStop ? 'Complément arrêté' : 'Complément terminé'} : <b>${n.tel}</b> téléphones, <b>${n.site}</b> sites web et <b>${n.email}</b> emails ajoutés` +
+        (n.echecs ? ` <span class="warn">(${n.echecs} zone(s) non traitées : serveurs OpenStreetMap saturés, relance la recherche plus tard pour les compléter)</span>` : '') +
+        (n.tel + n.site + n.email ? '. Télécharge à nouveau le fichier pour les avoir.' : '.');
+      $('osmStop').hidden = true;
+      $('status').innerHTML = '<span class="ok">Terminé.</span>';
+    }
   } catch (e) {
     $('status').innerHTML = `<span class="err">Erreur : ${e.message}</span>. Si le message parle de « Failed to fetch », réessaie dans quelques minutes.`;
   }
@@ -693,7 +708,8 @@ function genererSortie() {
 }
 
 // ===== Complément gratuit : OpenStreetMap (Overpass) =====
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
+let osmStop = false;
 const MOTS_GENERIQUES = new Set(['sarl', 'sas', 'sasu', 'eurl', 'sa', 'sci', 'snc', 'ste', 'societe', 'ets', 'etablissements', 'entreprise', 'groupe',
   'france', 'services', 'service', 'immobilier', 'immobiliere', 'immo', 'agence', 'cabinet', 'boulangerie', 'patisserie', 'boucherie',
   'charcuterie', 'restaurant', 'garage', 'pharmacie', 'coiffure', 'salon', 'chez', 'les', 'des', 'aux', 'and', 'the']);
@@ -703,31 +719,44 @@ function telFr(t) {
   if (d.startsWith('+33')) d = '0' + d.slice(3); else if (d.startsWith('0033')) d = '0' + d.slice(4);
   return /^0\d{9}$/.test(d) ? d.replace(/(\d{2})(?=\d)/g, '$1 ').trim() : String(t || '').split(';')[0].trim();
 }
+/** Interroge OpenStreetMap : 3 serveurs essayés à tour de rôle, 25 s max chacun, sans longues attentes. null = échec. */
 async function overpass(q) {
-  for (let essai = 0; essai < 6; essai++) {
-    const url = OVERPASS[essai % OVERPASS.length];
+  for (let essai = 0; essai < OVERPASS.length; essai++) {
+    if (osmStop) return null;
+    const url = OVERPASS[essai], ctrl = new AbortController(), minuteur = setTimeout(() => ctrl.abort(), 25000);
     try {
-      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) });
+      const r = await fetch(url, { method: 'POST', signal: ctrl.signal, headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) });
+      clearTimeout(minuteur);
       if (r.ok) return (await r.json()).elements || [];
-      log(`  OpenStreetMap occupé (${r.status}), nouvel essai…`);
-    } catch (e) { log('  OpenStreetMap injoignable, nouvel essai…'); }
-    await sleep(3000 * (essai + 1));
+      log(`  OpenStreetMap : serveur ${essai + 1} occupé (${r.status}), essai sur un autre…`);
+    } catch (e) { clearTimeout(minuteur); log(`  OpenStreetMap : serveur ${essai + 1} trop lent, essai sur un autre…`); }
+    await sleep(800);
   }
-  return [];
+  return null;
 }
 /** Cherche chaque établissement dans OpenStreetMap (même endroit + nom proche) et récupère tél, site, email. */
 async function completerOSM(lignes) {
   const geo = lignes.filter(r => r.lat && r.lon);
   const cases = {};
-  geo.forEach(r => { const k = `${Math.floor(r.lat * 20)}_${Math.floor(r.lon * 20)}`; (cases[k] = cases[k] || []).push(r); });
-  const cles = Object.keys(cases); let fait = 0; const n = { tel: 0, site: 0, email: 0 };
+  const D = 10;   // zones de 0,1° (environ 11 km) : moins d'appels
+  geo.forEach(r => { const k = `${Math.floor(r.lat * D)}_${Math.floor(r.lon * D)}`; (cases[k] = cases[k] || []).push(r); });
+  const cles = Object.keys(cases); let fait = 0; const n = { tel: 0, site: 0, email: 0, echecs: 0 };
   log(`OpenStreetMap : ${geo.length} établissements géolocalisés, ${cles.length} zone(s) à interroger`);
+  let echecsSuite = 0;
   for (const k of cles) {
+    if (osmStop) break;
     const [a, b] = k.split('_').map(Number), m = 0.004;
-    const bb = `${(a / 20 - m).toFixed(4)},${(b / 20 - m).toFixed(4)},${((a + 1) / 20 + m).toFixed(4)},${((b + 1) / 20 + m).toFixed(4)}`;
-    const q = `[out:json][timeout:90];(` + ['phone', 'contact:phone', 'website', 'contact:website', 'email', 'contact:email']
+    const bb = `${(a / D - m).toFixed(4)},${(b / D - m).toFixed(4)},${((a + 1) / D + m).toFixed(4)},${((b + 1) / D + m).toFixed(4)}`;
+    const q = `[out:json][timeout:25];(` + ['phone', 'contact:phone', 'website', 'contact:website', 'email', 'contact:email']
       .map(t => `nwr["name"]["${t}"](${bb});`).join('') + `);out center tags;`;
-    const pois = (await overpass(q)).map(el => ({ lat: el.lat || (el.center && el.center.lat), lon: el.lon || (el.center && el.center.lon), t: el.tags || {} }))
+    const reponse = await overpass(q);
+    if (!reponse) {
+      n.echecs++; echecsSuite++; fait++;
+      if (echecsSuite >= 3) { log('OpenStreetMap saturé : complément interrompu, le fichier reste utilisable.'); n.echecs += cles.length - fait; break; }
+      continue;
+    }
+    echecsSuite = 0;
+    const pois = reponse.map(el => ({ lat: el.lat || (el.center && el.center.lat), lon: el.lon || (el.center && el.center.lon), t: el.tags || {} }))
       .filter(p => p.lat && p.t.name).map(p => Object.assign(p, { mots: motsNom(p.t.name + ' ' + (p.t.brand || '')) }));
     for (const r of cases[k]) {
       const motsR = new Set(motsNom(`${r[1]} ${r[2]} ${r[3]}`));
@@ -753,7 +782,8 @@ async function completerOSM(lignes) {
     fait++;
     $('prog').style.width = Math.round(100 * fait / cles.length) + '%';
     $('status').textContent = `OpenStreetMap : zone ${fait} / ${cles.length} – ${n.tel} tél., ${n.site} sites, ${n.email} emails`;
-    await sleep(1100);
+    genererSortie();   // le fichier téléchargeable se complète au fur et à mesure
+    await sleep(600);
   }
   return n;
 }
@@ -770,6 +800,8 @@ $('dlGs').onclick = () => {
   a.href = URL.createObjectURL(new Blob([$('scriptGs').textContent.replace(/^\n/, '')], { type: 'text/plain;charset=utf-8' }));
   a.download = 'enrichissement_emails.gs'; a.click();
 };
+
+$('osmStop').onclick = () => { osmStop = true; $('osmStop').hidden = true; $('osmEtat').textContent = 'Arrêt en cours…'; };
 
 $('copy').onclick = async () => {
   try { await navigator.clipboard.writeText($('out').value); }
