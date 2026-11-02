@@ -6,8 +6,14 @@
 <title>Recherche entreprises France</title>
 <style>
   :root { --bg:#f3f4f6; --card:#fff; --txt:#111827; --muted:#6b7280; --accent:#1b5ea6; --accent2:#e8f0fa; --ok:#15803d; --err:#b91c1c; --warn:#b45309; --line:#e5e7eb; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f172a; --card:#111827; --txt:#f3f4f6; --muted:#9ca3af; --accent:#60a5fa; --accent2:#1e293b; --ok:#4ade80; --err:#f87171; --warn:#fbbf24; --line:#374151; } }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f172a; --card:#111827; --txt:#f3f4f6; --muted:#9ca3af; --accent:#60a5fa; --accent2:#1e293b; --ok:#4ade80; --err:#f87171; --warn:#fbbf24; --line:#374151; color-scheme:dark; } }
+  :root[data-theme="dark"] { --bg:#0f172a; --card:#111827; --txt:#f3f4f6; --muted:#9ca3af; --accent:#60a5fa; --accent2:#1e293b; --ok:#4ade80; --err:#f87171; --warn:#fbbf24; --line:#374151; color-scheme:dark; }
+  :root[data-theme="light"] { color-scheme:light; }
+  .theme { display:flex; justify-content:flex-end; gap:4px; margin-bottom:8px; }
+  .theme button { background:var(--card); color:var(--muted); border:1px solid var(--line); padding:4px 10px; font-size:12px; font-weight:normal; border-radius:14px; }
+  .theme button[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); font-weight:bold; }
   * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
   body { margin:0; background:var(--bg); color:var(--txt); font:15px/1.5 Arial, Helvetica, sans-serif; }
   main { max-width:860px; margin:28px auto; padding:0 16px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:22px; margin-bottom:16px; }
@@ -116,6 +122,11 @@
 </head>
 <body>
 <main>
+  <div class="theme" role="group" aria-label="Apparence">
+    <button data-theme="auto" aria-pressed="true" title="Suit le réglage de l'ordinateur">Auto</button>
+    <button data-theme="light" aria-pressed="false">☀️ Clair</button>
+    <button data-theme="dark" aria-pressed="false">🌙 Sombre</button>
+  </div>
   <details class="card aide" id="aide">
     <summary>Mode d'emploi</summary>
     <div class="corps">
@@ -129,6 +140,7 @@
         <li>Clique sur <b>Lancer la recherche</b> et garde l'onglet ouvert. Compte environ 1 minute pour 300 entreprises, plus 1 à 5 minutes pour le complément OpenStreetMap.</li>
         <li>Clique sur <b>Télécharger en CSV</b> (ou <b>Copier le tableau</b>).</li>
         <li>Dans le <b>tableau</b> : recherche rapide, filtres (avec téléphone, sans email, récentes, masquer les déjà connues) et tri. Tu peux taper un téléphone ou un email trouvé à la main directement dans sa case (fond jaune) : il est repris dans le CSV. Coche « Seulement les lignes affichées » pour n'exporter que ta sélection.</li>
+        <li><b>Liste LinkedIn (Kaspr)</b> : télécharge les entreprises sans email dont le gérant est connu, avec un lien de recherche LinkedIn par ligne. Ouvre chaque lien, clique sur le bon profil, récupère l'email avec l'extension Kaspr et note-le dans la colonne « email_trouve » (ou directement dans le tableau de l'outil).</li>
         <li>Onglet <b>Carte</b> : chaque entreprise en point (vert = téléphone et email, orange = il en manque un, gris = rien, jaune = déjà connue), avec le cercle du rayon. Clique sur un point pour voir ses coordonnées.</li>
         <li>Pour refaire la même recherche plus tard : donne-lui un nom et clique sur <b>Enregistrer cette recherche</b>. Elle apparaît en haut dans « Mes recherches » (enregistrée dans ton navigateur, sur cet ordinateur). La page se rouvre aussi avec tes derniers choix.</li>
         <li><b>Nouveautés</b> : quand tu relances une recherche enregistrée (même critères), les entreprises apparues depuis la dernière fois portent le badge « Nouvelle », et le filtre « Seulement les nouvelles » te permet de ne traiter qu'elles.</li>
@@ -268,6 +280,7 @@
     <h1>Résultat</h1>
     <p id="resume"></p>
     <div class="row"><button id="copy">Copier le tableau</button><button class="sec" id="dl">Télécharger en CSV</button>
+      <button class="sec" id="dlLinkedin" title="Entreprises sans email dont le gérant est connu, avec le lien de recherche LinkedIn (pour Kaspr)">Liste LinkedIn (Kaspr)</button>
       <label class="muted" style="font-size:13px"><input type="checkbox" id="exportFiltre"> Seulement les lignes affichées (filtres du tableau)</label></div>
     <div class="osmBox" id="osmBox" hidden><span id="osmEtat"></span> <button class="sec petit" id="osmStop">Arrêter le complément</button></div>
     <p style="margin-top:12px">Pour trouver les emails manquants, suis l'étape 2 du <a href="#aide" onclick="document.getElementById('aide').open=true">mode d'emploi</a>.</p>
@@ -1231,6 +1244,29 @@ $('dlGs').onclick = () => {
 };
 
 $('osmStop').onclick = () => { osmStop = true; $('osmStop').hidden = true; $('osmEtat').textContent = 'Arrêt en cours…'; };
+
+// ===== Liste de travail LinkedIn / Kaspr : entreprises sans email dont le gérant est connu =====
+$('dlLinkedin').onclick = () => {
+  const src = ($('exportFiltre').checked ? vueLignes() : lignes).filter(r => r[9] && !r[15]);
+  if (!src.length) { alert('Aucune entreprise sans email avec un gérant connu dans ces résultats.'); return; }
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const lignesCsv = [['gerant', 'fonction', 'entreprise', 'ville', 'telephone', 'lien_recherche_linkedin', 'email_trouve', 'siret']].concat(src.map(r => {
+    const nom = r[3] || r[2].split(' / ')[0] || r[1];
+    const lien = 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(`${r[9]} ${nom.replace(/\b(SARL|SAS|SASU|EURL|SA)\b/gi, '').trim()}`);
+    return [r[9], r[10], nom, r[7], r[13], lien, '', r[0]];
+  }));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + lignesCsv.map(l => l.map(q).join(';')).join('\n')], { type: 'text/csv;charset=utf-8' }));
+  a.download = `liste_linkedin_kaspr_${src.length}.csv`; a.click();
+};
+
+// ===== Apparence : auto / clair / sombre (mémorisé) =====
+function appliquerTheme(t) {
+  if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme');
+  document.querySelectorAll('.theme button').forEach(b => b.setAttribute('aria-pressed', b.dataset.theme === (t || 'auto')));
+}
+document.querySelectorAll('.theme button').forEach(b => b.onclick = () => { appliquerTheme(b.dataset.theme); ecrireLS('outilProspection.theme', b.dataset.theme); });
+appliquerTheme(lireLS('outilProspection.theme', 'auto'));
 
 $('copy').onclick = async () => {
   try { await navigator.clipboard.writeText($('out').value); }
