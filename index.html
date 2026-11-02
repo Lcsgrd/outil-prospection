@@ -42,6 +42,9 @@
   .ok { color:var(--ok); font-weight:bold; } .err { color:var(--err); font-weight:bold; } .warn { color:var(--warn); }
   .osmBox { margin-top:12px; padding:10px 12px; border-radius:8px; background:var(--accent2); font-size:13px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
   button.petit { padding:5px 10px; font-size:12px; }
+  .filtres { display:flex; flex-wrap:wrap; gap:10px 18px; margin-top:12px; font-size:14px; }
+  .filtres label { display:flex; align-items:center; gap:8px; }
+  .filtres select { width:auto; padding:6px 9px; font-size:13px; }
   .chips:empty { min-height:0; margin-top:0; }
   .rayonBox { margin-top:8px; padding:8px 14px 4px; border:1px solid var(--line); border-radius:8px; background:var(--accent2); }
   .rayonTete { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:13px; }
@@ -85,6 +88,7 @@
         <li><b>Zone</b> : choisis un ou plusieurs <b>départements</b> (menu ou saisie : « 38 », « Rhône ») et/ou des <b>villes</b> (« Bourgoin », « 38300 »). Fais glisser le curseur <b>Rayon</b> : à gauche la ville seule, puis de 2 à 50 km autour (le rayon s'applique à toutes les villes choisies).</li>
         <li><b>Métier</b> : tape ce que tu cherches dans la barre bleue (« boulangerie », « agence immobilière », « chauffagiste », ou un code comme « 43.22B »), décoche les codes inutiles, puis Entrée. Tu peux aussi passer par les boutons rapides ou la liste complète.</li>
         <li><b>Options</b> : pour l'immobilier, coche « Exclure les entreprises individuelles » (écarte les mandataires). Pour les artisans et commerçants, laisse-la décochée : beaucoup sont en entreprise individuelle.</li>
+        <li><b>Filtres</b> (facultatif) : <b>Créée depuis</b> pour ne garder que les entreprises récentes, <b>Taille</b> pour viser les structures sans salarié, petites (1 à 9) ou plus grosses (10 et plus).</li>
         <li>Clique sur <b>Lancer la recherche</b> et garde l'onglet ouvert. Compte environ 1 minute pour 300 entreprises, plus 1 à 5 minutes pour le complément OpenStreetMap.</li>
         <li>Clique sur <b>Télécharger en CSV</b> (ou <b>Copier le tableau</b>).</li>
       </ol>
@@ -118,7 +122,7 @@
         <tr><td>siret, nom_complet, enseignes, nom_commercial, naf</td><td>Identité de l'établissement au registre officiel</td></tr>
         <tr><td>adresse, code_postal, ville, departement</td><td>Adresse de l'établissement (pas celle du siège)</td></tr>
         <tr><td>gerant, qualite</td><td>Premier dirigeant déclaré (Prénom Nom) et sa fonction</td></tr>
-        <tr><td>tranche_effectif, date_creation</td><td>Taille et ancienneté de l'entreprise</td></tr>
+        <tr><td>effectif, date_creation, recente_moins_1_an</td><td>Nombre de salariés de l'établissement, date d'ouverture, et « oui » s'il a ouvert il y a moins d'un an (bonne cible : tout est à ouvrir)</td></tr>
         <tr><td>telephone, site_web, email, source_contact</td><td>Coordonnées trouvées sur OpenStreetMap et la fiche d'origine, pour vérifier</td></tr>
       </table>
       <p style="margin-top:6px">Déjà écartés automatiquement : entreprises et établissements fermés, doublons, données protégées (nom et adresse masqués), sans adresse, établissements d'une autre activité, et en option les entreprises individuelles et SCI/copropriétés.</p>
@@ -184,7 +188,15 @@
     <div class="opts">
       <label><input type="checkbox" id="optEI" checked> Exclure les entreprises individuelles (utile en immobilier pour écarter les mandataires ; décoché automatiquement pour les artisans et commerçants)</label>
       <label><input type="checkbox" id="optSCI" checked> Exclure SCI, copropriétés, syndicats de résidence</label>
-      <label><input type="checkbox" id="optOSM" checked> Compléter téléphone, site web et email avec OpenStreetMap (gratuit, +1 à 5 min)</label>
+      <label><input type="checkbox" id="optOSM" checked> Compléter téléphone, site web et email avec OpenStreetMap (gratuit, en arrière-plan)</label>
+    </div>
+    <div class="filtres">
+      <label>Créée depuis
+        <select id="optAge"><option value="0">Toutes les dates</option><option value="6">Moins de 6 mois</option><option value="12">Moins d'1 an</option><option value="24">Moins de 2 ans</option></select>
+      </label>
+      <label>Taille
+        <select id="optTaille"><option value="">Toutes les tailles</option><option value="0">Sans salarié</option><option value="1">1 à 9 salariés</option><option value="10">10 salariés et plus</option></select>
+      </label>
     </div>
 
     <div class="row"><button id="go">Lancer la recherche</button><span class="muted" id="estim"></span></div>
@@ -606,6 +618,10 @@ function dansDep(e, dep) {
   if (dep === '2B') return /^20[2-6]/.test(cp);
   return cp.startsWith(dep);
 }
+const EFFECTIFS = { NN: 'Sans salarié', '00': 'Sans salarié', '01': '1-2', '02': '3-5', '03': '6-9', '11': '10-19', '12': '20-49',
+  '21': '50-99', '22': '100-199', '31': '200-249', '32': '250-499', '41': '500-999', '42': '1000-1999', '51': '2000-4999', '52': '5000-9999', '53': '10000+' };
+const libelleEffectif = t => EFFECTIFS[t] || 'Non renseigné';
+
 function depDe(e) {
   const c = String(e.commune || ''), cp = String(e.code_postal || '');
   if (c) return c.startsWith('97') ? c.slice(0, 3) : c.slice(0, 2);
@@ -623,6 +639,10 @@ $('go').onclick = async () => {
   $('go').disabled = true; lignes = []; $('osmBox').hidden = true; $('osmStop').hidden = false; $('log').textContent = ''; $('result').hidden = true; $('prog').style.width = '0';
   const vus = new Set(); const st = { ei: 0, hors: 0, fermes: 0, sci: 0, inexpl: 0, plafond: [] };
   const exEI = $('optEI').checked, exSCI = $('optSCI').checked;
+  const moisMax = +$('optAge').value, taille = $('optTaille').value;
+  const dateMin = moisMax ? new Date(Date.now() - moisMax * 30.44 * 86400000).toISOString().slice(0, 10) : '';
+  const unAn = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
+  st.age = 0; st.taille = 0;
   try {
     // Zones : départements entiers, villes seules (code commune) ou villes + rayon (recherche géographique)
     const zones = deps.map(d => ({ nom: d, filtre: `departement=${d}`, base: API, garde: e => dansDep(e, d) }))
@@ -657,12 +677,19 @@ $('go').onclick = async () => {
             if (!e.siret || vus.has(e.siret)) continue;
             const nom = u.nom_complet || u.nom_raison_sociale || '';
             if (exSCI && (HORS_CIBLE.test(norm(nom)) || cj.startsWith('65') || cj === '9110')) { st.sci++; continue; }
+            // Ancienneté : date de création de l'établissement (une nouvelle agence d'une société ancienne compte comme récente)
+            const creee = String(e.date_creation || u.date_creation || '');
+            if (dateMin && (!creee || creee < dateMin)) { st.age++; continue; }
+            // Taille : tranche d'effectif de l'établissement, sinon de l'entreprise
+            const tr = String(e.tranche_effectif_salarie || u.tranche_effectif_salarie || 'NN');
+            const classe = ['NN', '00', 'null', ''].includes(tr) ? '0' : ['01', '02', '03'].includes(tr) ? '1' : '10';
+            if (taille && classe !== taille) { st.taille++; continue; }
             vus.add(e.siret);
             const d = (u.dirigeants || []).find(x => x.type_dirigeant === 'personne physique' && x.nom);
             const gerant = d ? `${String(d.prenoms || '').split(' ')[0]} ${d.nom}`.trim() : '';
             const ligne = [e.siret, nom, (e.liste_enseignes || []).filter(Boolean).join(' / '), e.nom_commercial || '',
               e.activite_principale || naf, e.adresse || '', e.code_postal || '', e.libelle_commune || '', depDe(e),
-              gerant, d ? (d.qualite || '') : '', u.tranche_effectif_salarie || '', u.date_creation || '', '', '', '', ''];
+              gerant, d ? (d.qualite || '') : '', libelleEffectif(tr), creee, '', '', '', '', creee && creee >= unAn ? 'oui' : ''];
             ligne.lat = +e.latitude || null; ligne.lon = +e.longitude || null;
             lignes.push(ligne);
           }
@@ -675,7 +702,9 @@ $('go').onclick = async () => {
     }
     // 1) Le fichier est disponible tout de suite
     genererSortie();
-    const resume = `<span class="ok">${lignes.length} établissements</span> trouvés. Écartés : ${st.ei} entreprises individuelles, ${st.sci} SCI/copropriétés, ${st.hors} établissements hors zone, ${st.fermes} fermés, ${st.inexpl} inexploitables (données protégées, sans adresse ou autre activité).` +
+    const resume = `<span class="ok">${lignes.length} établissements</span> trouvés. Écartés : ${st.ei} entreprises individuelles, ${st.sci} SCI/copropriétés, ${st.hors} établissements hors zone, ${st.fermes} fermés, ${st.inexpl} inexploitables (données protégées, sans adresse ou autre activité)` +
+      (st.age ? `, ${st.age} trop anciennes` : '') + (st.taille ? `, ${st.taille} hors taille choisie` : '') + '.' +
+      (lignes.filter(r => r[17]).length ? `<br>Dont <b>${lignes.filter(r => r[17]).length} créées il y a moins d'un an</b> (colonne « recente_moins_1_an »).` : '') +
       (st.plafond.length ? `<br><span class="warn">Attention : le registre limite chaque recherche à 10 000 sociétés. Résultat incomplet pour ${st.plafond.join(', ')}.</span>` : '');
     $('resume').innerHTML = resume;
     $('result').hidden = false;
@@ -700,7 +729,7 @@ $('go').onclick = async () => {
 
 function genererSortie() {
   const entete = ['siret', 'nom_complet', 'enseignes', 'nom_commercial', 'naf', 'adresse', 'code_postal', 'ville', 'departement', 'gerant', 'qualite',
-    'tranche_effectif', 'date_creation', 'telephone', 'site_web', 'email', 'source_contact'];
+    'effectif', 'date_creation', 'telephone', 'site_web', 'email', 'source_contact', 'recente_moins_1_an'];
   const propre = v => String(v == null ? '' : v).replace(/[\t\r\n]+/g, ' ').trim();
   $('out').value = [entete, ...lignes].map(r => r.map(propre).join('\t')).join('\n');
   $('apercu').innerHTML = '<tr>' + ['SIRET', 'Nom', 'Enseigne', 'APE', 'Ville', 'Gérant', 'Téléphone', 'Site', 'Email'].map(h => `<th>${h}</th>`).join('') + '</tr>' +
